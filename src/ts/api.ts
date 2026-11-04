@@ -1,4 +1,4 @@
-// Talking to riffs_wf_server. Everything is JSON; the sign-in is an HttpOnly cookie.
+// Talking to riffs_server. Everything is JSON; the sign-in is an HttpOnly cookie.
 
 export const SERVER: string = import.meta.env.VITE_RIFFS_SERVER ?? '/'
 

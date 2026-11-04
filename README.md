@@ -1,7 +1,8 @@
-# riffs_wf_client_vue
+# riffs_client_vue
 
-Phone-first web client for the riff guessing game **Riff Rivals**. Vue 3 + TypeScript + Vite,
-no other runtime libraries. Server: `../riffs_wf_server`. Goals and research: `mm_home/goals/riff_goals/`.
+Phone-first web client for the riff guessing game, for now called **Riff Rivals** (the name is `VITE_GAME_NAME`
+in `.env`; the server's `riffs.game-name` replaces it once loaded). Vue 3 + TypeScript + Vite,
+no other runtime libraries. Server: `../riffs_server`. Goals and research: `mm_home/goals/riffs_goals/`.
 
 ```bash
 nvm use            # Node 22 (.nvmrc)

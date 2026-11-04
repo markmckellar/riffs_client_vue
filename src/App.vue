@@ -1,6 +1,6 @@
 <template>
   <header class="app_header">
-    <button type="button" class="app_brand" @click="go('')"><span aria-hidden="true">🎸</span> {{ config?.game ?? 'Riff Rivals' }}</button>
+    <button type="button" class="app_brand" @click="go('')"><span aria-hidden="true">🎸</span> {{ gameName }}</button>
     <nav v-if="me" class="app_user">
       <span class="app_user_name">{{ me.name }}</span>
       <button type="button" class="tool" @click="signOut">Sign out</button>
@@ -23,13 +23,16 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { api, ApiError, type AuthConfig, type GameEvent, type Me, type Rules } from './ts/api'
 import SignIn from './components/SignIn.vue'
 import LobbyView from './components/LobbyView.vue'
 import GameView from './components/GameView.vue'
 
 const config = ref<AuthConfig | null>(null)
+// the name comes from the server (riffs.game-name); .env's VITE_GAME_NAME until it answers
+const gameName = computed(() => config.value?.game || import.meta.env.VITE_GAME_NAME)
+watch(gameName, (n) => { document.title = n })
 const me = ref<Me | null>(null)
 const rules = ref<Rules | null>(null)
 const loadError = ref('')
@@ -92,7 +95,7 @@ function notify(e: GameEvent) {
     window.setTimeout(() => { toasts.value = toasts.value.filter((t) => t !== e) }, 6000)
   }
   if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
-    const n = new Notification(config.value?.game ?? 'Riff Rivals', { body: e.text, tag: e.gameId })
+    const n = new Notification(gameName.value, { body: e.text, tag: e.gameId })
     n.onclick = () => { window.focus(); go('game/' + e.gameId) }
   }
   if (navigator.vibrate && (e.type === 'riff_ready' || e.type === 'round_over')) navigator.vibrate(80)
