@@ -1,0 +1,146 @@
+<template>
+  <div v-if="game" class="game">
+    <div class="scoreboard">
+      <div class="side">
+        <span class="side_name">You</span>
+        <EncoreMeter :count="game.me.encores" :max="rules.encores" />
+        <span class="side_pts">{{ game.me.points }} pts</span>
+      </div>
+      <div class="vs">Round {{ current.number }}</div>
+      <div class="side side_right">
+        <span class="side_name">{{ game.opponent.name }} <i v-if="game.opponent.online" class="online" title="online"></i></span>
+        <EncoreMeter :count="game.opponent.encores" :max="rules.encores" />
+        <span class="side_pts">{{ game.opponent.points }} pts</span>
+      </div>
+    </div>
+
+    <!-- what happened last round -->
+    <div v-if="lastDone && game.turn !== 'over'" class="card reveal">
+      <div>
+        <strong>Round {{ lastDone.number }}:</strong>
+        {{ revealText(lastDone) }}
+        <span v-if="lastDone.tier" class="tier">{{ TIER_LABEL[lastDone.tier] }}</span>
+      </div>
+      <button v-if="lastDone.rift" type="button" class="tool" @click="play(lastDone.rift, instrument, 100)">▶ Hear it</button>
+    </div>
+
+    <div class="card">
+      <InstrumentPicker v-model="instrument" />
+    </div>
+
+    <div class="card">
+      <RiffComposer v-if="game.turn === 'compose'" :key="'c' + current.number" :game-id="game.id" :rules="rules"
+        :instrument="instrument" :opponent-name="game.opponent.name" @send="sendRift" />
+
+      <RiffGuesser v-else-if="game.turn === 'guess'" :round="current" :rules="rules" :instrument="instrument" :me="game.me"
+        :busy="busy" @guess="guess" @hint="act(() => api.hint(game!.id))" @extra-string="act(() => api.extraString(game!.id))" />
+
+      <div v-else-if="game.turn === 'wait_compose'" class="waiting">
+        <div class="waiting_icon">✍️🎼</div>
+        <p><strong>{{ game.opponent.name }}</strong> is writing a riff for you{{ game.opponent.bot ? ' (thinking…)' : '' }}.</p>
+        <p class="muted">You'll be told when it arrives.</p>
+      </div>
+
+      <div v-else-if="game.turn === 'wait_guess'" class="watching">
+        <h2>{{ game.opponent.name }} is guessing your riff</h2>
+        <StaffEditor :model-value="current.rift ?? []" mode="view" :highlight="playing" />
+        <div class="row">
+          <button type="button" class="btn" @click="playMine">▶ Play my riff</button>
+          <span v-if="current.tier" class="tier">{{ TIER_LABEL[current.tier] }} · {{ current.score }}</span>
+        </div>
+        <GuitarStrings :total="current.strings" :left="current.stringsLeft" />
+        <GuessHistory v-if="current.guesses.length" :guesses="current.guesses" />
+        <p v-else class="muted">No guesses yet.</p>
+      </div>
+
+      <div v-else class="over">
+        <div class="over_icon">{{ won ? '🏆' : '🎻' }}</div>
+        <h2>{{ won ? 'You won!' : `${game.opponent.name} won` }}</h2>
+        <p class="muted">{{ game.resigned ? (game.resigned === game.me.id ? 'You resigned.' : `${game.opponent.name} resigned.`) : `After ${game.rounds.length} rounds.` }}
+          You scored {{ game.me.points }} points.</p>
+        <button type="button" class="btn btn_primary" @click="emit('rematch', game.opponent.id)">Rematch</button>
+      </div>
+    </div>
+
+    <p v-if="error" class="error">{{ error }}</p>
+    <div class="game_foot">
+      <button type="button" class="btn btn_ghost" @click="emit('back')">← Games</button>
+      <button v-if="game.status === 'active'" type="button" class="btn btn_ghost btn_danger" @click="resign">Resign</button>
+    </div>
+  </div>
+  <p v-else class="muted">Loading…</p>
+</template>
+
+<script setup lang="ts">
+import { computed, ref, watch } from 'vue'
+import { api, type GameView, type Note, type Round, type Rules } from '../ts/api'
+import { TIER_LABEL } from '../ts/music'
+import { play } from '../ts/synth'
+import EncoreMeter from './EncoreMeter.vue'
+import InstrumentPicker from './InstrumentPicker.vue'
+import RiffComposer from './RiffComposer.vue'
+import RiffGuesser from './RiffGuesser.vue'
+import StaffEditor from './StaffEditor.vue'
+import GuitarStrings from './GuitarStrings.vue'
+import GuessHistory from './GuessHistory.vue'
+
+const props = defineProps<{ gameId: string; rules: Rules; refresh: number }>()
+const emit = defineEmits<{ back: []; rematch: [opponentId: string] }>()
+
+const game = ref<GameView | null>(null)
+const error = ref('')
+const busy = ref(false)
+const playing = ref(-1)
+const instrument = ref(storedInstrument())
+
+const current = computed(() => game.value!.rounds[game.value!.rounds.length - 1])
+const lastDone = computed(() => [...(game.value?.rounds ?? [])].reverse().find((r) => r.phase === 'solved' || r.phase === 'failed'))
+const won = computed(() => game.value?.winner === game.value?.me.id)
+
+function storedInstrument() { try { return localStorage.getItem('rifts_instrument') || 'piano' } catch { return 'piano' } }
+
+async function load() {
+  try { game.value = await api.game(props.gameId); error.value = '' } catch (e) { error.value = (e as Error).message }
+}
+watch(() => [props.gameId, props.refresh], load, { immediate: true })
+
+async function act(f: () => Promise<GameView>) {
+  busy.value = true
+  error.value = ''
+  try { game.value = await f() } catch (e) { error.value = (e as Error).message } finally { busy.value = false }
+}
+const sendRift = (notes: Note[], tuneId?: string) => act(() => api.sendRift(props.gameId, notes, tuneId))
+const guess = (notes: number[]) => act(() => api.guess(props.gameId, notes))
+function resign() { if (confirm('Resign this game?')) void act(() => api.resign(props.gameId)) }
+
+function revealText(r: Round) {
+  const me = game.value!.me.id
+  const listenerName = r.listener === me ? 'You' : game.value!.opponent.name
+  const n = r.guesses.length
+  return r.phase === 'solved'
+    ? `${listenerName} guessed the riff in ${n} ${n === 1 ? 'try' : 'tries'}.`
+    : `${listenerName} ran out of strings${r.listener === me ? ' and lost an Encore' : ', losing an Encore'}.`
+}
+function playMine() { if (current.value.rift) play(current.value.rift, instrument.value, 100, (i) => { playing.value = i }) }
+</script>
+
+<style scoped>
+.game { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); }
+.scoreboard { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; background: var(--surface); border-radius: var(--radius); padding: 10px 12px; }
+.side { display: grid; gap: 2px; }
+.side_right { text-align: right; justify-items: end; }
+.side_name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.side_pts { font-size: 0.8rem; color: var(--text-muted); }
+.vs { font-size: 0.8rem; color: var(--text-muted); text-align: center; }
+.online { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--good); }
+.reveal { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 0.9rem; }
+.tier { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 99px; background: var(--surface-2); font-size: 0.75rem; font-weight: 700; color: var(--accent); }
+.waiting, .over { text-align: center; padding: 16px 0; }
+.waiting_icon, .over_icon { font-size: 2.6rem; }
+.watching { display: grid; gap: 10px; }
+.watching h2 { margin: 0; font-size: 1.15rem; }
+.row { display: flex; gap: 10px; align-items: center; }
+.muted { color: var(--text-muted); }
+.error { color: var(--bad); }
+.game_foot { display: flex; justify-content: space-between; }
+</style>
