@@ -95,7 +95,7 @@ function notify(e: GameEvent) {
     const n = new Notification(config.value?.game ?? 'Riff Rivals', { body: e.text, tag: e.gameId })
     n.onclick = () => { window.focus(); go('game/' + e.gameId) }
   }
-  if (navigator.vibrate && (e.type === 'rift_ready' || e.type === 'round_over')) navigator.vibrate(80)
+  if (navigator.vibrate && (e.type === 'riff_ready' || e.type === 'round_over')) navigator.vibrate(80)
 }
 function openToast(t: GameEvent) { toasts.value = toasts.value.filter((x) => x !== t); go('game/' + t.gameId) }
 </script>

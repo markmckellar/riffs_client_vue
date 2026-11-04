@@ -12,7 +12,7 @@ import { INSTRUMENTS, blip } from '../ts/synth'
 const model = defineModel<string>({ required: true })
 function pick(id: string) {
   model.value = id
-  try { localStorage.setItem('rifts_instrument', id) } catch { /* storage blocked */ }
+  try { localStorage.setItem('riffs_instrument', id) } catch { /* storage blocked */ }
   blip(67, id)
 }
 </script>

@@ -74,16 +74,16 @@ function nudge(d: number) {
 }
 
 /** Index of the sounding note (guess slot) for an index into the riff, which may contain rests. */
-function slotOf(riftIndex: number): number {
-  if (riftIndex < 0 || !props.round.rift) return -1
-  if (props.round.rift[riftIndex].m === null) return -1
-  return props.round.rift.slice(0, riftIndex).filter((n) => n.m !== null).length
+function slotOf(riffIndex: number): number {
+  if (riffIndex < 0 || !props.round.riff) return -1
+  if (props.round.riff[riffIndex].m === null) return -1
+  return props.round.riff.slice(0, riffIndex).filter((n) => n.m !== null).length
 }
 
 function togglePlay() {
   if (playback.value) { playback.value.stop(); playback.value = null; return }
-  if (!props.round.rift) return
-  const p = play(props.round.rift, props.instrument, bpm.value, (i) => { playingSlot.value = slotOf(i) })
+  if (!props.round.riff) return
+  const p = play(props.round.riff, props.instrument, bpm.value, (i) => { playingSlot.value = slotOf(i) })
   playback.value = p
   void p.done.then(() => { if (playback.value === p) playback.value = null })
 }
@@ -91,7 +91,7 @@ function togglePlay() {
 function playGuess() {
   playback.value?.stop()
   // the guess with the riff's rhythm, so it can be compared by ear
-  const rhythm = (props.round.rift ?? []).filter((n) => n.m !== null).map((n) => n.b)
+  const rhythm = (props.round.riff ?? []).filter((n) => n.m !== null).map((n) => n.b)
   const p = play(slots.value.filter((n) => n.m !== null).map((n, i) => ({ m: n.m, b: rhythm[i] ?? 1 })), props.instrument, bpm.value,
     (i) => { playingSlot.value = i })
   playback.value = p

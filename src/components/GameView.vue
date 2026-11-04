@@ -21,7 +21,7 @@
         {{ revealText(lastDone) }}
         <span v-if="lastDone.tier" class="tier">{{ TIER_LABEL[lastDone.tier] }}</span>
       </div>
-      <button v-if="lastDone.rift" type="button" class="tool" @click="play(lastDone.rift, instrument, 100)">▶ Hear it</button>
+      <button v-if="lastDone.riff" type="button" class="tool" @click="play(lastDone.riff, instrument, 100)">▶ Hear it</button>
     </div>
 
     <div class="card">
@@ -30,7 +30,7 @@
 
     <div class="card">
       <RiffComposer v-if="game.turn === 'compose'" :key="'c' + current.number" :game-id="game.id" :rules="rules"
-        :instrument="instrument" :opponent-name="game.opponent.name" @send="sendRift" />
+        :instrument="instrument" :opponent-name="game.opponent.name" @send="sendRiff" />
 
       <RiffGuesser v-else-if="game.turn === 'guess'" :round="current" :rules="rules" :instrument="instrument" :me="game.me"
         :busy="busy" @guess="guess" @hint="act(() => api.hint(game!.id))" @extra-string="act(() => api.extraString(game!.id))" />
@@ -43,7 +43,7 @@
 
       <div v-else-if="game.turn === 'wait_guess'" class="watching">
         <h2>{{ game.opponent.name }} is guessing your riff</h2>
-        <StaffEditor :model-value="current.rift ?? []" mode="view" :highlight="playing" />
+        <StaffEditor :model-value="current.riff ?? []" mode="view" :highlight="playing" />
         <div class="row">
           <button type="button" class="btn" @click="playMine">▶ Play my riff</button>
           <span v-if="current.tier" class="tier">{{ TIER_LABEL[current.tier] }} · {{ current.score }}</span>
@@ -97,7 +97,7 @@ const current = computed(() => game.value!.rounds[game.value!.rounds.length - 1]
 const lastDone = computed(() => [...(game.value?.rounds ?? [])].reverse().find((r) => r.phase === 'solved' || r.phase === 'failed'))
 const won = computed(() => game.value?.winner === game.value?.me.id)
 
-function storedInstrument() { try { return localStorage.getItem('rifts_instrument') || 'piano' } catch { return 'piano' } }
+function storedInstrument() { try { return localStorage.getItem('riffs_instrument') || 'piano' } catch { return 'piano' } }
 
 async function load() {
   try { game.value = await api.game(props.gameId); error.value = '' } catch (e) { error.value = (e as Error).message }
@@ -109,7 +109,7 @@ async function act(f: () => Promise<GameView>) {
   error.value = ''
   try { game.value = await f() } catch (e) { error.value = (e as Error).message } finally { busy.value = false }
 }
-const sendRift = (notes: Note[], tuneId?: string) => act(() => api.sendRift(props.gameId, notes, tuneId))
+const sendRiff = (notes: Note[], tuneId?: string) => act(() => api.sendRiff(props.gameId, notes, tuneId))
 const guess = (notes: number[]) => act(() => api.guess(props.gameId, notes))
 function resign() { if (confirm('Resign this game?')) void act(() => api.resign(props.gameId)) }
 
@@ -121,7 +121,7 @@ function revealText(r: Round) {
     ? `${listenerName} guessed the riff in ${n} ${n === 1 ? 'try' : 'tries'}.`
     : `${listenerName} ran out of strings${r.listener === me ? ' and lost an Encore' : ', losing an Encore'}.`
 }
-function playMine() { if (current.value.rift) play(current.value.rift, instrument.value, 100, (i) => { playing.value = i }) }
+function playMine() { if (current.value.riff) play(current.value.riff, instrument.value, 100, (i) => { playing.value = i }) }
 </script>
 
 <style scoped>

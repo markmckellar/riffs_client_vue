@@ -1,6 +1,6 @@
-// Talking to rifts_wf_server. Everything is JSON; the sign-in is an HttpOnly cookie.
+// Talking to riffs_wf_server. Everything is JSON; the sign-in is an HttpOnly cookie.
 
-export const SERVER: string = import.meta.env.VITE_RIFTS_SERVER ?? '/'
+export const SERVER: string = import.meta.env.VITE_RIFFS_SERVER ?? '/'
 
 /** One note or rest: m = MIDI pitch (60 = middle C) or null for a rest, b = length in beats. */
 export interface Note { m: number | null; b: number }
@@ -19,7 +19,7 @@ export interface Round {
   phase: 'composing' | 'guessing' | 'solved' | 'failed'
   length: number; strings: number; stringsLeft: number; revealed: (number | null)[]
   guesses: Guess[]; hintsUsed: number; fromLibrary: boolean
-  rift?: Note[]; score?: number; tier?: string; tuneId?: string | null
+  riff?: Note[]; score?: number; tier?: string; tuneId?: string | null
 }
 export type Turn = 'compose' | 'wait_compose' | 'guess' | 'wait_guess' | 'over'
 export interface GameView {
@@ -58,17 +58,17 @@ export const api = {
   google: (credential: string) => call<Me>('POST', 'api/auth/google', { credential }),
   devLogin: (name: string) => call<Me>('POST', 'api/auth/dev', { name }),
   logout: () => call<unknown>('POST', 'api/auth/logout'),
-  rules: () => call<Rules>('GET', 'api/rifts/rules'),
+  rules: () => call<Rules>('GET', 'api/riffs/rules'),
   players: () => call<Lobbyist[]>('GET', 'api/players'),
   games: () => call<GameView[]>('GET', 'api/games'),
   game: (id: string) => call<GameView>('GET', `api/games/${id}`),
   start: (opponentId?: string) => call<GameView>('POST', 'api/games', { opponentId: opponentId ?? null }),
-  sendRift: (id: string, notes: Note[], tuneId?: string) => call<GameView>('POST', `api/games/${id}/rift`, { notes, tuneId: tuneId ?? null }),
+  sendRiff: (id: string, notes: Note[], tuneId?: string) => call<GameView>('POST', `api/games/${id}/riff`, { notes, tuneId: tuneId ?? null }),
   guess: (id: string, notes: number[]) => call<GameView>('POST', `api/games/${id}/guess`, { notes }),
   hint: (id: string) => call<GameView>('POST', `api/games/${id}/hint`),
   extraString: (id: string) => call<GameView>('POST', `api/games/${id}/extra-string`),
   resign: (id: string) => call<GameView>('POST', `api/games/${id}/resign`),
-  evaluate: (notes: Note[]) => call<Evaluation>('POST', 'api/rifts/evaluate', { notes }),
+  evaluate: (notes: Note[]) => call<Evaluation>('POST', 'api/riffs/evaluate', { notes }),
   library: () => call<Tune[]>('GET', 'api/library'),
   fragments: (tuneId: string) => call<Fragment[]>('GET', `api/library/${tuneId}/fragments`),
   events: (after: number) => call<{ seq: number; events: GameEvent[] }>('GET', `api/events?after=${after}`),

@@ -67,7 +67,7 @@ import LibraryPicker from './LibraryPicker.vue'
 const props = defineProps<{ gameId: string; rules: Rules; instrument: string; opponentName: string }>()
 const emit = defineEmits<{ send: [notes: Note[], tuneId: string | undefined] }>()
 
-const draftKey = `rifts_draft_${props.gameId}`
+const draftKey = `riffs_draft_${props.gameId}`
 const notes = ref<Note[]>(loadDraft())
 const tuneId = ref<string | undefined>(undefined)
 const selected = ref(-1)
