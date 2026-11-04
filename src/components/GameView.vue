@@ -8,7 +8,8 @@
       </div>
       <div class="vs">Round {{ current.number }}</div>
       <div class="side side_right">
-        <span class="side_name">{{ game.opponent.name }} <i v-if="game.opponent.online" class="online" title="online"></i></span>
+        <span class="side_name"><span v-if="game.opponent.bot" title="bot">🤖 </span>{{ game.opponent.name }} <i v-if="game.opponent.online && !game.opponent.bot" class="online" title="online"></i></span>
+        <span v-if="game.opponent.level" :class="['level', 'level_' + game.opponent.level]">{{ game.opponent.level }}</span>
         <EncoreMeter :count="game.opponent.encores" :max="rules.encores" />
         <span class="side_pts">{{ game.opponent.points }} pts</span>
       </div>
@@ -132,6 +133,8 @@ function playMine() { if (current.value.riff) play(current.value.riff, instrumen
 .side_name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .side_pts { font-size: 0.8rem; color: var(--text-muted); }
 .vs { font-size: 0.8rem; color: var(--text-muted); text-align: center; }
+.level { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+.level_easy { color: var(--good); } .level_medium { color: var(--accent); } .level_hard { color: var(--bad); }
 .online { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--good); }
 .reveal { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 0.9rem; }
 .tier { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 99px; background: var(--surface-2); font-size: 0.75rem; font-weight: 700; color: var(--accent); }

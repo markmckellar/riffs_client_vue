@@ -3,7 +3,7 @@
     <button type="button" class="btn btn_primary btn_big" :disabled="starting" @click="start()">
       🎲 Quick match
     </button>
-    <p class="muted small">Plays someone who's online, or a bot if nobody is.</p>
+    <p class="muted small">Plays someone who's online, or a bot if nobody is. Or pick a bot below.</p>
 
     <section class="card">
       <h2>Your games</h2>
@@ -11,7 +11,7 @@
       <ul class="list">
         <li v-for="g in games" :key="g.id">
           <button type="button" :class="['game_row', { game_row_mine: myTurn(g) }]" @click="emit('open', g.id)">
-            <span class="game_row_name">{{ g.opponent.name }}</span>
+            <span class="game_row_name"><span v-if="g.opponent.bot">🤖 </span>{{ g.opponent.name }}</span>
             <span class="game_row_status">{{ statusText(g) }}</span>
             <span class="game_row_lives"><EncoreMeter :count="g.me.encores" :max="0" /> vs <EncoreMeter :count="g.opponent.encores" :max="0" /></span>
           </button>
@@ -19,14 +19,28 @@
       </ul>
     </section>
 
-    <section class="card">
+    <section v-if="people.length" class="card">
       <h2>Players</h2>
       <ul class="list">
-        <li v-for="p in players" :key="p.id" class="player_row">
+        <li v-for="p in people" :key="p.id" class="player_row">
           <i :class="['online', { online_on: p.online }]"></i>
           <span class="player_name">{{ p.name }}</span>
           <span class="muted small">{{ p.wins }}–{{ p.losses }}</span>
           <button type="button" class="btn btn_small" :disabled="starting" @click="start(p.id)">Challenge</button>
+        </li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>🤖 Bots <small class="muted">always ready to play</small></h2>
+      <div class="seg level_tabs" role="tablist">
+        <button v-for="l in LEVELS" :key="l" type="button" role="tab" :aria-selected="level === l"
+          :class="['seg_btn', { seg_on: level === l }]" @click="level = l">{{ l }}</button>
+      </div>
+      <ul class="list">
+        <li v-for="p in bots.filter((b) => b.level === level)" :key="p.id" class="player_row">
+          <span class="player_name">{{ p.name }}<small class="muted about">{{ p.about }}</small></span>
+          <button type="button" class="btn btn_small" :disabled="starting" @click="start(p.id)">Play</button>
         </li>
       </ul>
     </section>
@@ -35,8 +49,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { api, type GameView, type Lobbyist } from '../ts/api'
+import { computed, ref, watch } from 'vue'
+import { api, type BotLevel, type GameView, type Lobbyist } from '../ts/api'
 import EncoreMeter from './EncoreMeter.vue'
 
 const props = defineProps<{ refresh: number }>()
@@ -45,6 +59,10 @@ const games = ref<GameView[]>([])
 const players = ref<Lobbyist[]>([])
 const starting = ref(false)
 const error = ref('')
+const LEVELS: BotLevel[] = ['easy', 'medium', 'hard']
+const level = ref<BotLevel>('easy')
+const people = computed(() => players.value.filter((p) => !p.bot))
+const bots = computed(() => players.value.filter((p) => p.bot))
 
 async function load() {
   try { [games.value, players.value] = await Promise.all([api.games(), api.players()]) } catch (e) { error.value = (e as Error).message }
@@ -78,7 +96,10 @@ h2 { margin: 0 0 8px; font-size: 1.1rem; }
 .game_row_mine .game_row_status { color: var(--accent); }
 .game_row_lives { grid-row: 1 / span 2; grid-column: 2; align-self: center; font-size: 0.75rem; color: var(--text-muted); }
 .player_row { display: flex; align-items: center; gap: 8px; }
-.player_name { flex: 1; }
+.player_name { flex: 1; display: grid; }
+.about { font-size: 0.78rem; }
+.level_tabs { margin-bottom: 10px; text-transform: capitalize; }
+h2 small { font-size: 0.75rem; font-weight: 400; }
 .online { width: 8px; height: 8px; border-radius: 50%; background: var(--border); }
 .online_on { background: var(--good); }
 .muted { color: var(--text-muted); }

@@ -9,7 +9,7 @@ export interface Me { id: string; name: string; email?: string; wins: number; lo
 export interface AuthConfig { game: string; googleClientId: string; devLogin: boolean; me: Me | null }
 
 export interface Player {
-  id: string; name: string; bot: boolean; online: boolean
+  id: string; name: string; bot: boolean; level?: BotLevel; online: boolean
   encores: number; points: number; hints: number; extraStrings: number
 }
 export interface Guess { notes: number[]; marks: Mark[]; hints: (string | null)[]; correct: boolean; at: number }
@@ -26,7 +26,8 @@ export interface GameView {
   id: string; status: 'active' | 'finished'; winner: string | null; resigned: string | null; updatedAt: number
   me: Player; opponent: Player; rounds: Round[]; turn: Turn; round?: number
 }
-export interface Lobbyist { id: string; name: string; bot: boolean; online: boolean; wins: number; losses: number }
+export type BotLevel = 'easy' | 'medium' | 'hard'
+export interface Lobbyist { id: string; name: string; bot: boolean; level?: BotLevel; about?: string; online: boolean; wins: number; losses: number }
 export interface Reason { rule: string; points: number; text: string }
 export interface Evaluation { score: number; tier: string; key: string; reasons: Reason[]; problem: string | null }
 export interface Rules { minNotes: number; maxNotes: number; maxRests: number; lowest: number; highest: number; lengths: number[]; strings: number; encores: number }
