@@ -5,21 +5,6 @@
       <button type="button" class="btn btn_primary" :disabled="!sounding" @click="togglePlay">{{ playback ? '■ Stop' : '▶ Play' }}</button>
       <InstrumentPicker bare />
       <span :class="['count', { count_ok: countOk }]" :title="`a riff has ${rules.minNotes} to ${rules.maxNotes} notes`">{{ sounding }}/{{ rules.maxNotes }} notes</span>
-      <span class="row_gap"></span>
-      <HelpSheet title="How to write a riff" storage-key="riffs_help_compose">
-        <p><b>To add:</b> tap a <b>piano key</b> (or the staff at <b>+</b>). The note goes in at the cursor and the
-          cursor stays on it, so you can try keys until it sounds right; <b>⏎</b> moves on to the next spot. Every note
-          is the same length.</p>
-        <p><b>To change a note:</b> tap it on the staff (its name turns orange), then a piano key. <b>⌫</b> deletes
-          it (with nothing selected, the last note); <b>␣ rest</b> turns it into a rest, or a rest back into a note
-          (with nothing selected, it adds a rest).</p>
-        <h3>Other buttons</h3>
-        <dl>
-          <dt>🗑 Clear</dt><dd>Start over. You get a few seconds to undo it.</dd>
-          <dt>▶</dt><dd>Hear your riff. <b>Sound</b> picks the instrument.</dd>
-          <dt>🎙</dt><dd><b>Play it in:</b> sing, whistle or play into the phone, one note at a time, and it writes the notes down.</dd>
-        </dl>
-      </HelpSheet>
     </div>
 
     <StaffEditor v-model="notes" v-model:selected="selected" mode="compose" :highlight="playing"
@@ -38,6 +23,20 @@
         <button v-if="undoNotes" type="button" class="tool btn_undo" @click="undoClear">↶ Undo</button>
         <button v-else type="button" class="tool" :disabled="!notes.length" @click="clear">Clear</button>
         <MicRecorder :bpm="bpm" :lowest="rules.lowest" :highest="rules.highest" :max-notes="rules.maxNotes" @notes="fromMic" />
+        <HelpSheet title="How to write a riff" storage-key="riffs_help_compose">
+          <p><b>To add:</b> tap a <b>piano key</b> (or the staff at <b>+</b>). The note goes in at the cursor and the
+            cursor stays on it, so you can try keys until it sounds right; <b>⏎</b> moves on to the next spot. Every note
+            is the same length.</p>
+          <p><b>To change a note:</b> tap it on the staff (its name turns orange), then a piano key. <b>⌫</b> deletes
+            it (with nothing selected, the last note); <b>␣ rest</b> turns it into a rest, or a rest back into a note
+            (with nothing selected, it adds a rest).</p>
+          <h3>Other buttons</h3>
+          <dl>
+            <dt>🗑 Clear</dt><dd>Start over. You get a few seconds to undo it.</dd>
+            <dt>▶</dt><dd>Hear your riff. <b>Sound</b> picks the instrument.</dd>
+            <dt>🎙</dt><dd><b>Play it in:</b> sing, whistle or play into the phone, one note at a time, and it writes the notes down.</dd>
+          </dl>
+        </HelpSheet>
       </div>
     </div>
 
