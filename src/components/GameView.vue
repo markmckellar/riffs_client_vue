@@ -25,9 +25,7 @@
       <button v-if="lastDone.riff" type="button" class="tool" @click="play(lastDone.riff, instrument, 100)">▶ Hear it</button>
     </div>
 
-    <div class="card">
-      <InstrumentPicker v-model="instrument" />
-    </div>
+    <div class="sound_row"><InstrumentPicker v-model="instrument" /></div>
 
     <div class="card">
       <RiffComposer v-if="game.turn === 'compose'" :key="'c' + current.number" :game-id="game.id" :rules="rules"
@@ -160,6 +158,7 @@ function playMine() { if (current.value.riff) play(current.value.riff, instrumen
 .level { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
 .level_easy { color: var(--good); } .level_medium { color: var(--accent); } .level_hard { color: var(--bad); }
 .online { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--good); }
+.sound_row { display: flex; justify-content: flex-end; margin: -4px 2px -6px; }
 .reveal { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 0.9rem; }
 .tier { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 99px; background: var(--surface-2); font-size: 0.75rem; font-weight: 700; color: var(--accent); }
 .waiting, .over { text-align: center; padding: 16px 0; }
