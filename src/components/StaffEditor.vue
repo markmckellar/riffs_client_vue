@@ -138,10 +138,13 @@ const restCount = computed(() => slots.value.length - soundingCount.value)
 const canAppend = computed(() => props.mode === 'compose'
   && (soundingCount.value < props.maxNotes || restCount.value < props.maxRests))
 /**
- * The staff is scaled to the screen width (never scrolls). Writing: always sized for the biggest riff (8 notes,
- * 2 rests and the + column), so the notes don't shrink as you add them. Guessing / viewing: sized for the riff.
+ * The staff is scaled to the screen width (never scrolls) and always has room for the biggest riff, so every staff
+ * looks the same however many notes it holds. Writing: 8 notes, 2 rests and the + column. Guessing / viewing: 8 notes
+ * (more columns only if a riff with rests needs them).
  */
-const columns = computed(() => (props.mode === 'compose' ? props.maxNotes + props.maxRests + 1 : Math.max(slots.value.length, 6)))
+const columns = computed(() => (props.mode === 'compose'
+  ? props.maxNotes + props.maxRests + 1
+  : Math.max(slots.value.length, props.maxNotes)))
 const width = computed(() => LEFT + COL * columns.value + 12)
 // above the staff: a row of note names, and in learner mode a row of shape arrows under it
 const NAME_ROW = 18
