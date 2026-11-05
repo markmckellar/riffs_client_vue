@@ -1,14 +1,18 @@
 <template>
   <section class="composer">
-    <header class="composer_head">
-      <h2>Write a riff</h2>
+    <!-- laid out like the guess screen: play + sound on top, the staff, the piano, then the keys -->
+    <div class="row">
+      <button type="button" class="btn btn_primary" :disabled="!sounding" @click="togglePlay">{{ playback ? '■ Stop' : '▶ Play' }}</button>
+      <InstrumentPicker bare />
+      <span :class="['count', { count_ok: countOk }]" :title="`a riff has ${rules.minNotes} to ${rules.maxNotes} notes`">{{ sounding }}/{{ rules.maxNotes }} notes</span>
+      <span class="row_gap"></span>
       <HelpSheet title="How to write a riff" storage-key="riffs_help_compose">
-        <p><b>To add:</b> tap the staff at <b>+</b>, at the height of the note you want (higher = a higher note; its
-          name shows above it). Every note is the same length. <b>space</b> adds a rest (a pause), <b>⌫</b> removes the
-          last note.</p>
-        <p><b>To change a note:</b> tap it. An <b>Edit</b> box shows which note you're changing. Tap the staff above
-          it to move it, or use ▲ ▼ (half steps, which give sharps ♯). <b>space</b> turns it into a rest (or a rest back into a note);
-          <b>Del</b> deletes it. <b>✓ Done</b> goes back to adding.</p>
+        <p><b>To add:</b> tap a <b>piano key</b> (or the staff at <b>+</b>). The note goes in at the cursor and the
+          cursor stays on it, so you can try keys until it sounds right; <b>⏎</b> moves on to the next spot. Every note
+          is the same length.</p>
+        <p><b>To change a note:</b> tap it on the staff (its name turns orange), then a piano key. <b>⌫</b> deletes
+          it (with nothing selected, the last note); <b>␣ rest</b> turns it into a rest, or a rest back into a note
+          (with nothing selected, it adds a rest).</p>
         <h3>Other buttons</h3>
         <dl>
           <dt>🗑 Clear</dt><dd>Start over. You get a few seconds to undo it.</dd>
@@ -21,55 +25,29 @@
           Strings 🎸 for when you guess. Tips: end on a "home" note (often the note you started on), use mostly small
           steps, and repeat a little pattern. A riff has {{ rules.minNotes }}–{{ rules.maxNotes }} notes.</p>
       </HelpSheet>
-      <span :class="['count', { count_ok: countOk }]">{{ sounding }} notes <small>({{ rules.minNotes }}–{{ rules.maxNotes }})</small></span>
-    </header>
-    <p class="hint">{{ opponentName }} will hear it and try to write it down.</p>
+    </div>
 
     <StaffEditor v-model="notes" v-model:selected="selected" mode="compose" :highlight="playing"
       :max-notes="rules.maxNotes" :max-rests="rules.maxRests" :lowest="rules.lowest" :highest="rules.highest"
       :new-length="1" plain-rhythm :instrument="instrument" @add="addAt" />
 
-    <!-- The keyboard, always under the staff. Adding: pick a length, tap the staff; space adds a rest; ⌫ removes the
-         last note. Editing (a note tapped): the same keys change that note; space = rest/note; Del deletes it. -->
-    <div :class="['notebox', { editbar: editing }]" role="toolbar" :aria-label="editing ? 'Change the selected note' : 'Note keys'">
-      <div class="editbar_head">
-        <template v-if="editing">
-          <strong class="editbar_title">Edit #{{ selected + 1 }}: {{ selNote ? noteName(selNote.m!) : 'rest' }}</strong>
-          <StepButtons v-if="selNote" @up="nudge(1)" @down="nudge(-1)" />
-          <span class="editbar_gap"></span>
-          <button type="button" class="btn btn_small btn_primary" @click="selected = -1">✓ Done</button>
-        </template>
-        <span v-else class="caption">{{ addCaption }}</span>
-      </div>
-      <div class="keys" role="group" aria-label="Note keys">
-        <button v-if="!editing" type="button" class="key key_space" title="Space: add a rest (a silence)" :disabled="rests >= rules.maxRests" @click="addRestAtEnd">
-          <span class="key_label">rest</span>space
-        </button>
-        <button v-else-if="selNote" type="button" class="key key_space" title="Space: make it a rest (a silence)" :disabled="rests >= rules.maxRests" @click="toRest">
-          <span class="key_label">rest</span>space
-        </button>
-        <button v-else type="button" class="key key_space" title="Space: make it a note again" :disabled="sounding >= rules.maxNotes" @click="toNote">
-          <span class="key_label">note</span>space
-        </button>
-        <button v-if="!editing" type="button" class="key key_back" title="Backspace: remove the last note" aria-label="Backspace: remove the last note"
-          :disabled="!notes.length" @click="backspace">
-          <span class="key_label">back</span>⌫
-        </button>
-        <button v-else type="button" class="key key_del" title="Delete it" aria-label="Delete it" @click="remove">
-          <span class="key_label">&nbsp;</span>Del
-        </button>
-      </div>
-      <p v-if="editing" class="caption">{{ selNote ? 'Tap the staff above it to move it.' : 'A rest is a silence.' }}</p>
-    </div>
+    <!-- the same piano as when guessing: a key puts the note at the cursor and stays on it; ⏎ moves on -->
+    <PianoKeys :lowest="rules.lowest" :highest="rules.highest" :current="selNote ? selNote.m : null" :instrument="instrument" @press="onPiano" />
 
+    <div class="toolbar">
+      <div class="tools">
+        <button type="button" class="tool tool_key" title="Backspace: delete this note (or the last one)" aria-label="Backspace" :disabled="!notes.length" @click="backspace">⌫</button>
+        <button type="button" class="tool tool_key" title="Enter: next note" aria-label="Enter: next note" @click="enter">⏎</button>
+        <button type="button" class="tool" :title="selected >= 0 ? 'Space: make this a rest (or a note again)' : 'Space: add a rest'"
+          :disabled="selected < 0 && rests >= rules.maxRests" @click="restKey">␣ rest</button>
+        <button v-if="undoNotes" type="button" class="tool btn_undo" @click="undoClear">↶ Undo</button>
+        <button v-else type="button" class="tool" :disabled="!notes.length" @click="clear">Clear</button>
+      </div>
+    </div>
     <div class="row">
-      <button type="button" class="btn" :disabled="!sounding" @click="togglePlay">{{ playback ? '■ Stop' : '▶ Play' }}</button>
       <MicRecorder :bpm="bpm" :lowest="rules.lowest" :highest="rules.highest" :max-notes="rules.maxNotes" @notes="fromMic" />
       <button type="button" class="btn btn_ghost" @click="showLibrary = !showLibrary">📚 Famous tunes</button>
-      <button v-if="undoNotes" type="button" class="btn btn_undo" @click="undoClear">↶ Undo clear</button>
-      <button v-else type="button" class="btn btn_ghost" :disabled="!notes.length" @click="clear">🗑 Clear</button>
     </div>
-    <InstrumentPicker />
 
     <LibraryPicker v-if="showLibrary" :instrument="instrument" @pick="fromLibrary" @close="showLibrary = false" />
 
@@ -102,7 +80,7 @@ import MicRecorder from './MicRecorder.vue'
 import LibraryPicker from './LibraryPicker.vue'
 import HelpSheet from './HelpSheet.vue'
 import InstrumentPicker from './InstrumentPicker.vue'
-import StepButtons from './StepButtons.vue'
+import PianoKeys from './PianoKeys.vue'
 
 const props = defineProps<{ gameId: string; rules: Rules; instrument: string; opponentName: string }>()
 const emit = defineEmits<{ send: [notes: Note[], tuneId: string | undefined] }>()
@@ -120,7 +98,6 @@ const evaluation = ref<Evaluation | null>(null)
 const sending = ref(false)
 
 const sounding = computed(() => notes.value.filter((n) => n.m !== null).length)
-const editing = computed(() => selected.value >= 0 && selected.value < notes.value.length)
 const rests = computed(() => notes.value.length - sounding.value)
 const countOk = computed(() => sounding.value >= props.rules.minNotes && sounding.value <= props.rules.maxNotes)
 const selNote = computed(() => { const n = notes.value[selected.value]; return n && n.m !== null ? n : null })
@@ -156,21 +133,41 @@ watch(notes, (n) => {
   }, 300)
 }, { immediate: true, deep: true })
 
-/** A tap at + adds a note at that height with the chosen length (the keyboard's lit key). */
+/** A tap at + adds a note at that height; the cursor stays on it (like the piano). */
 function addAt(pitch: number) {
   if (sounding.value >= props.rules.maxNotes) return
   notes.value = [...notes.value, { m: pitch, b: 1 }]
+  selected.value = notes.value.length - 1
 }
-/** space while adding: a rest at the end, with the chosen length */
-function addRestAtEnd() { notes.value = [...notes.value, { m: null, b: 1 }] }
-const addCaption = computed(() => sounding.value >= props.rules.maxNotes
-  ? `The riff is full (${props.rules.maxNotes} notes). Tap a note to change it.`
-  : 'Tap the staff to add a note. Tap a note to change it.')
-/** ⌫ while adding: remove the last note, like typing. */
-function backspace() { notes.value = notes.value.slice(0, -1) }
-function nudge(d: number) {
-  notes.value = notes.value.map((x, i) => (i === selected.value && x.m !== null
-    ? { ...x, m: Math.min(props.rules.highest, Math.max(props.rules.lowest, x.m + d)) } : x))
+
+// ---- the keyboard: the cursor is the selected note, or the end of the riff (nothing selected)
+/** a piano key: changes the selected note, or adds one at the end; the cursor stays on it */
+function onPiano(m: number) {
+  const s = selected.value
+  if (s >= 0 && s < notes.value.length) {
+    if (notes.value[s].m === null && sounding.value >= props.rules.maxNotes) return    // a rest can't become a 9th note
+    notes.value = notes.value.map((n, i) => (i === s ? { m, b: 1 } : n))
+    return
+  }
+  addAt(m)
+}
+/** ⏎: on to the next note, or past the end (where the next key adds a note) */
+function enter() {
+  selected.value = selected.value >= 0 && selected.value < notes.value.length - 1 ? selected.value + 1 : -1
+}
+/** ␣ rest: the selected note becomes a rest (or a rest a note); with nothing selected, a rest at the end */
+function restKey() {
+  const s = selected.value
+  if (s < 0) { if (rests.value < props.rules.maxRests) notes.value = [...notes.value, { m: null, b: 1 }]; return }
+  if (notes.value[s].m === null) toNote()
+  else if (rests.value < props.rules.maxRests) toRest()
+}
+/** ⌫: delete the selected note (the cursor moves to the one before); with nothing selected, the last note */
+function backspace() {
+  const s = selected.value
+  if (s < 0) { notes.value = notes.value.slice(0, -1); return }
+  notes.value = notes.value.filter((_, i) => i !== s)
+  selected.value = s - 1 >= 0 ? s - 1 : (notes.value.length ? 0 : -1)
 }
 function toRest() { notes.value = notes.value.map((x, i) => (i === selected.value ? { m: null, b: x.b } : x)) }
 /** A rest becomes a note at the pitch of the note before it (or B4), ready to be moved. */
@@ -178,10 +175,6 @@ function toNote() {
   const before = notes.value.slice(0, selected.value).reverse().find((x) => x.m !== null)
   const m = before?.m ?? 71
   notes.value = notes.value.map((x, i) => (i === selected.value ? { m, b: x.b } : x))
-}
-function remove() {
-  notes.value = notes.value.filter((_, i) => i !== selected.value)
-  selected.value = -1    // back to adding
 }
 /** Clear the whole riff, with a few seconds to undo it (instead of an "are you sure?" box). */
 const undoNotes = ref<{ notes: Note[]; tuneId: string | undefined } | null>(null)
@@ -220,19 +213,12 @@ onBeforeUnmount(() => playback.value?.stop())
 
 <style scoped>
 .composer { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); }
-.composer_head { display: flex; align-items: center; gap: 10px; }
-.composer_head h2 { flex: 1; }
-.caption { width: 100%; margin: 0; font-size: 0.8rem; color: var(--text-muted); }
-.notebox { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; background: var(--surface-2); border: 1px solid var(--accent); border-radius: var(--radius); padding: 10px; margin-top: -6px; }
-.notebox_head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.notebox_x { background: none; border: 0; color: var(--text-muted); font-size: 1.1rem; min-width: 36px; min-height: 32px; cursor: pointer; }
 .btn_undo { border-color: var(--accent); color: var(--accent); }
-.editbar_head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.editbar_gap { flex: 1; }
-.editbar_title, .editbar_head .btn { white-space: nowrap; }
 .tool_danger { color: var(--bad); }
-.composer_head h2 { margin: 0; font-size: 1.25rem; }
-.count { color: var(--bad); font-weight: 700; }
+.count { color: var(--bad); font-weight: 700; font-size: 0.85rem; white-space: nowrap; }
+.row_gap { flex: 1; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; }
+.tool_key { font-size: 1.15rem; min-width: 48px; }
 .count_ok { color: var(--good); }
 .count small { color: var(--text-muted); font-weight: 400; }
 .hint { margin: 0; color: var(--text-muted); font-size: 0.9rem; }
