@@ -22,12 +22,13 @@
           <dt><i class="dot mark_close"></i></dt><dd><b>Close</b> (1–2 half steps off). The arrow says go higher ↑ or lower ↓.</dd>
           <dt><i class="dot mark_miss"></i></dt><dd>Miss.</dd>
         </dl>
-        <h3>Strings and Encores</h3>
-        <p>Each wrong guess snaps a guitar string. Run out of strings and you lose an Encore 🎤; lose all your Encores and the
-          game is over. Either way, after the riff it's your turn to write one.</p>
+        <h3>Your guitar</h3>
+        <p>You have a {{ rules.strings }}-string guitar for the whole game (both guitars are at the top). Each wrong guess
+          snaps a string, and strings don't come back. Keep guessing until you get the riff, then it's your turn to
+          write one. If your last string snaps, you lose the game.</p>
         <dl>
           <dt>💡</dt><dd><b>Hint:</b> fills in one note.</dd>
-          <dt>🎸</dt><dd><b>+String:</b> one more guess this round.</dd>
+          <dt>🎸</dt><dd><b>+String:</b> put a snapped string back on your guitar.</dd>
         </dl>
         <p class="muted">You earn Hints and Strings by writing musical riffs.</p>
         <h3>🎓 Learner mode</h3>
@@ -49,7 +50,6 @@
       <label class="tempo">Tempo <input v-model.number="bpm" type="range" min="50" max="160" step="5" /></label>
     </div>
 
-    <GuitarStrings :total="round.strings" :left="round.stringsLeft" />
 
     <StaffEditor v-model="slots" v-model:selected="selected" mode="guess" plain-rhythm :locked="round.revealed"
       :marks="lastGuess?.marks" :mark-hints="lastGuess?.hints" :highlight="playingSlot"
@@ -67,7 +67,7 @@
       </div>
       <div class="tools">
         <button type="button" class="tool" :disabled="!me.hints || busy" title="Reveal one note" @click="emit('hint')">💡 Hint ×{{ me.hints }}</button>
-        <button type="button" class="tool" :disabled="!me.extraStrings || busy" title="One more wrong guess allowed" @click="emit('extraString')">🎸 +String ×{{ me.extraStrings }}</button>
+        <button type="button" class="tool" :disabled="!me.extraStrings || me.strings >= rules.strings || busy" title="Put a snapped string back" @click="emit('extraString')">🎸 +String ×{{ me.extraStrings }}</button>
       </div>
     </div>
 
@@ -78,6 +78,8 @@
       <span><i class="dot mark_close"></i>close (arrow shows which way)</span><span><i class="dot mark_miss"></i>miss</span>
     </div>
 
+    <p :class="['strings_line', { strings_low: me.strings <= 2 }]">🎸 You have <b>{{ me.strings }}</b> {{ me.strings === 1 ? 'string' : 'strings' }} left
+      · a wrong guess snaps one<template v-if="me.strings === 1"> · <b>last string!</b></template></p>
     <button type="button" class="btn btn_primary btn_big" :disabled="!complete || busy" @click="submit">
       {{ complete ? 'Guess!' : `Fill in ${missing} more note${missing === 1 ? '' : 's'}` }}
     </button>
@@ -91,7 +93,6 @@ import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import type { Note, Player, Round, Rules } from '../ts/api'
 import { play, type Playback } from '../ts/synth'
 import StaffEditor from './StaffEditor.vue'
-import GuitarStrings from './GuitarStrings.vue'
 import GuessHistory from './GuessHistory.vue'
 import HelpSheet from './HelpSheet.vue'
 import StepButtons from './StepButtons.vue'
@@ -226,6 +227,9 @@ onBeforeUnmount(() => playback.value?.stop())
 .learner_switch small { font-size: 0.75rem; }
 .tool_learn { border-color: var(--good); }
 .learn_tip { margin: 0; font-size: 0.85rem; background: var(--surface-2); border-left: 3px solid var(--good); padding: 8px 10px; border-radius: var(--radius-sm); }
+.strings_line { margin: 0; font-size: 0.85rem; color: var(--text-muted); text-align: center; }
+.strings_line b { color: var(--text); }
+.strings_low, .strings_low b { color: var(--accent); }
 .legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 0.75rem; color: var(--text-muted); }
 .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; }
 .mark_exact { background: var(--good); } .mark_octave { background: var(--accent-2); }

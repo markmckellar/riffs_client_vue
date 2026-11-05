@@ -1,6 +1,6 @@
 <template>
   <!-- Guesses left, drawn as a guitar: each wrong guess snaps a string (the ends curl away and fray). -->
-  <figure class="guitar" :aria-label="`${left} of ${total} strings left`">
+  <figure :class="['guitar', { guitar_compact: compact }]" :aria-label="`${left} of ${total} strings left`">
     <svg :viewBox="`0 0 ${W} ${H}`" class="guitar_svg">
       <!-- body (the right end) with its sound hole and bridge -->
       <path :d="bodyPath" class="g_body" />
@@ -22,12 +22,12 @@
       <!-- strings: whole ones, then the broken ones -->
       <g v-for="i in total" :key="'s' + i">
         <template v-if="i <= left">
-          <polyline :points="`${pegs[(i - 1) % 6].x},${pegs[(i - 1) % 6].y} ${NUT_X},${sy(i)} ${BRIDGE_X},${sy(i)}`"
+          <polyline :points="`${pegs[i - 1].x},${pegs[i - 1].y} ${NUT_X},${sy(i)} ${BRIDGE_X},${sy(i)}`"
             :class="['g_string', { g_string_last: left === 1 }]" :style="{ strokeWidth: 0.9 + (i - 1) * 0.28 }" />
         </template>
         <g v-else :class="['g_broken', { g_snap: i === left + 1 && justSnapped }]">
           <!-- the stub still on the peg -->
-          <line :x1="pegs[(i - 1) % 6].x" :y1="pegs[(i - 1) % 6].y" :x2="NUT_X" :y2="sy(i)" class="g_broken_line" />
+          <line :x1="pegs[i - 1].x" :y1="pegs[i - 1].y" :x2="NUT_X" :y2="sy(i)" class="g_broken_line" />
           <!-- left piece: runs to the break, droops, frays -->
           <path :d="leftPiece(i)" class="g_broken_line" />
           <path :d="fray(breakX(i) - 4, sy(i) + 9, 1)" class="g_fray" />
@@ -37,7 +37,7 @@
         </g>
       </g>
     </svg>
-    <figcaption>
+    <figcaption v-if="!compact">
       🎸 <strong>{{ left }}</strong> of {{ total }} strings left
       <span class="g_note">· each wrong guess breaks one</span>
       <span v-if="left === 1" class="g_warn">· last string!</span>
@@ -47,19 +47,20 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-const props = defineProps<{ total: number; left: number }>()
+const props = withDefaults(defineProps<{ total: number; left: number; /** small, no caption (the scoreboard) */ compact?: boolean }>(), { compact: false })
 
 const W = 372
-const H = computed(() => 30 + props.total * 11)
+const SPACING = computed(() => (props.total > 6 ? 5 : 7))
+const H = computed(() => 30 + (props.total - 1) * SPACING.value + 22)
 const NUT_X = 58
 const NECK_END = 246
 const FRETS = [96, 132, 166, 197, 224]
 const DOTS = [149, 210]
 const HOLE_X = 268
 const BRIDGE_X = 336
-const top = computed(() => H.value / 2 - ((props.total - 1) * 7) / 2)
-const bottom = computed(() => H.value / 2 + ((props.total - 1) * 7) / 2)
-function sy(i: number) { return top.value + (i - 1) * 7 }
+const top = computed(() => H.value / 2 - ((props.total - 1) * SPACING.value) / 2)
+const bottom = computed(() => H.value / 2 + ((props.total - 1) * SPACING.value) / 2)
+function sy(i: number) { return top.value + (i - 1) * SPACING.value }
 
 const headPath = computed(() => {
   const h = H.value
@@ -74,11 +75,12 @@ const bodyPath = computed(() => {
     + ` C370 ${y(0.5)} 370 ${y(1.03)} 336 ${y(1.05)} C302 ${y(1.06)} 296 ${y(0.74)} 290 ${y(0.84)}`
     + ` C282 ${y(1.0)} 246 ${y(1.0)} 242 ${y(0.8)} Z`
 })
-/** 3 pegs along the top edge of the headstock, 3 along the bottom (for more than 6 strings they repeat). */
+/** Half the pegs along the top edge of the headstock, half along the bottom (a 12-string has 6 a side). */
 const pegs = computed(() => {
   const h = H.value, l: { x: number; y: number; knobY: number }[] = []
-  for (let k = 0; k < 3; k++) l.push({ x: 18 + k * 13, y: h * 0.2 + k * 2, knobY: h * 0.2 + k * 2 - 9 })
-  for (let k = 0; k < 3; k++) l.push({ x: 44 - k * 13, y: h * 0.8 - (2 - k) * 2, knobY: h * 0.8 - (2 - k) * 2 + 9 })
+  const half = Math.ceil(props.total / 2), step = 39 / half
+  for (let k = 0; k < half; k++) l.push({ x: 14 + k * step, y: h * 0.2 + k * 1.5, knobY: h * 0.2 + k * 1.5 - 9 })
+  for (let k = 0; k < props.total - half; k++) l.push({ x: 14 + (half - 1 - k) * step, y: h * 0.8 - (half - 1 - k) * 1.5, knobY: h * 0.8 - (half - 1 - k) * 1.5 + 9 })
   return l
 })
 
@@ -111,6 +113,7 @@ watch(() => props.left, (now, before) => {
 <style scoped>
 .guitar { margin: 0; }
 .guitar_svg { width: 100%; max-width: 440px; display: block; margin: 0 auto; overflow: visible; }
+.guitar_compact .guitar_svg { max-width: 150px; margin: 2px 0; }
 .g_body { fill: #b7793f; stroke: #6b3f1d; stroke-width: 2; }
 .g_hole_ring { fill: none; stroke: #e8cfa0; stroke-width: 2; opacity: 0.7; }
 .g_hole { fill: #2a160a; }

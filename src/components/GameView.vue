@@ -3,15 +3,15 @@
     <div class="scoreboard">
       <div class="side">
         <span class="side_name">You<span v-if="game.me.learner" title="learner mode"> 🎓</span></span>
-        <EncoreMeter :count="game.me.encores" :max="rules.encores" />
-        <span class="side_pts">{{ game.me.points }} pts</span>
+        <GuitarStrings compact :total="rules.strings" :left="game.me.strings" />
+        <span class="side_pts">🎸 {{ game.me.strings }} strings · {{ game.me.points }} pts</span>
       </div>
       <div class="vs">Round {{ current.number }}</div>
       <div class="side side_right">
         <span class="side_name"><span v-if="game.opponent.bot" title="bot">🤖 </span><span v-if="game.opponent.learner" title="learner mode: they get ear-training helpers">🎓 </span>{{ game.opponent.name }} <i v-if="game.opponent.online && !game.opponent.bot" class="online" title="online"></i></span>
         <span v-if="game.opponent.level" :class="['level', 'level_' + game.opponent.level]">{{ game.opponent.level }}</span>
-        <EncoreMeter :count="game.opponent.encores" :max="rules.encores" />
-        <span class="side_pts">{{ game.opponent.points }} pts</span>
+        <GuitarStrings compact :total="rules.strings" :left="game.opponent.strings" />
+        <span class="side_pts">🎸 {{ game.opponent.strings }} strings · {{ game.opponent.points }} pts</span>
       </div>
     </div>
 
@@ -50,7 +50,8 @@
           <button type="button" class="btn" @click="playMine">▶ Play my riff</button>
           <span v-if="current.tier" class="tier">{{ TIER_LABEL[current.tier] }} · {{ current.score }}</span>
         </div>
-        <GuitarStrings :total="current.strings" :left="current.stringsLeft" />
+        <p class="muted">🎸 {{ game.opponent.name }} has {{ game.opponent.strings }} strings left<template v-if="current.wrong">
+          · your riff has snapped {{ current.wrong }} so far</template>.</p>
         <GuessHistory v-if="current.guesses.length" :guesses="current.guesses" />
         <p v-else class="muted">No guesses yet.</p>
       </div>
@@ -78,7 +79,6 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { api, type GameView, type Note, type Round, type Rules } from '../ts/api'
 import { TIER_LABEL } from '../ts/music'
 import { play, snap } from '../ts/synth'
-import EncoreMeter from './EncoreMeter.vue'
 import InstrumentPicker from './InstrumentPicker.vue'
 import RiffComposer from './RiffComposer.vue'
 import RiffGuesser from './RiffGuesser.vue'
@@ -140,9 +140,10 @@ function revealText(r: Round) {
   const me = game.value!.me.id
   const listenerName = r.listener === me ? 'You' : game.value!.opponent.name
   const n = r.guesses.length
+  const snapped = r.wrong ? ` (${r.wrong} ${r.wrong === 1 ? 'string' : 'strings'} snapped)` : ''
   return r.phase === 'solved'
-    ? `${listenerName} guessed the riff in ${n} ${n === 1 ? 'try' : 'tries'}.`
-    : `${listenerName} ran out of strings${r.listener === me ? ' and lost an Encore' : ', losing an Encore'}.`
+    ? `${listenerName} guessed the riff in ${n} ${n === 1 ? 'try' : 'tries'}${snapped}.`
+    : `${listenerName} snapped the last string.`
 }
 function playMine() { if (current.value.riff) play(current.value.riff, instrument.value, 100, (i) => { playing.value = i }) }
 </script>
@@ -152,6 +153,7 @@ function playMine() { if (current.value.riff) play(current.value.riff, instrumen
 .scoreboard { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; background: var(--surface); border-radius: var(--radius); padding: 10px 12px; }
 .side { display: grid; gap: 2px; }
 .side_right { text-align: right; justify-items: end; }
+.side :deep(.guitar_compact) { width: 100%; max-width: 150px; }
 .side_name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .side_pts { font-size: 0.8rem; color: var(--text-muted); }
 .vs { font-size: 0.8rem; color: var(--text-muted); text-align: center; }

@@ -19,7 +19,7 @@
           <button type="button" :class="['game_row', { game_row_mine: myTurn(g) }]" @click="emit('open', g.id)">
             <span class="game_row_name"><span v-if="g.opponent.bot">🤖 </span>{{ g.opponent.name }}</span>
             <span class="game_row_status">{{ statusText(g) }}</span>
-            <span class="game_row_lives"><EncoreMeter :count="g.me.encores" :max="0" /> vs <EncoreMeter :count="g.opponent.encores" :max="0" /></span>
+            <span class="game_row_lives">🎸 {{ g.me.strings }} vs 🎸 {{ g.opponent.strings }}</span>
           </button>
         </li>
       </ul>
@@ -57,7 +57,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { api, type BotLevel, type GameView, type Lobbyist, type Me } from '../ts/api'
-import EncoreMeter from './EncoreMeter.vue'
 
 const props = defineProps<{ refresh: number; me?: Me | null }>()
 const emit = defineEmits<{ open: [id: string]; learner: [boolean] }>()

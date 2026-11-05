@@ -10,14 +10,16 @@ export interface AuthConfig { game: string; googleClientId: string; devLogin: bo
 
 export interface Player {
   id: string; name: string; bot: boolean; level?: BotLevel; online: boolean; learner: boolean
-  encores: number; points: number; hints: number; extraStrings: number
+  /** strings left on this player's guitar, for the whole game */
+  strings: number; points: number; hints: number; extraStrings: number
 }
 export interface Guess { notes: number[]; marks: Mark[]; hints: (string | null)[]; correct: boolean; at: number }
 export type Mark = 'exact' | 'octave' | 'close' | 'miss'
 export interface Round {
   number: number; composer: string; listener: string; role: 'composer' | 'listener'
   phase: 'composing' | 'guessing' | 'solved' | 'failed'
-  length: number; strings: number; stringsLeft: number; revealed: (number | null)[]
+  /** wrong guesses on this riff (each snapped one of the listener's strings) */
+  length: number; wrong: number; revealed: (number | null)[]
   guesses: Guess[]; hintsUsed: number; freeNotes: number; learner: boolean; fromLibrary: boolean
   riff?: Note[]; score?: number; tier?: string; tuneId?: string | null
 }
@@ -30,7 +32,7 @@ export type BotLevel = 'easy' | 'medium' | 'hard'
 export interface Lobbyist { id: string; name: string; bot: boolean; level?: BotLevel; about?: string; online: boolean; wins: number; losses: number }
 export interface Reason { rule: string; points: number; text: string }
 export interface Evaluation { score: number; tier: string; key: string; reasons: Reason[]; problem: string | null }
-export interface Rules { minNotes: number; maxNotes: number; maxRests: number; lowest: number; highest: number; lengths: number[]; strings: number; encores: number }
+export interface Rules { minNotes: number; maxNotes: number; maxRests: number; lowest: number; highest: number; lengths: number[]; strings: number }
 export interface Tune { id: string; title: string; source: string; year: number; meter: string; fragments: number }
 export interface Fragment { tuneId: string; title: string; start: number; notes: Note[]; score: number; phraseEnd: boolean }
 export interface GameEvent { seq: number; type: string; gameId: string; text: string; at: number }
