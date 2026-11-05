@@ -3,17 +3,12 @@
     <header class="composer_head">
       <h2>Write a riff</h2>
       <HelpSheet title="How to write a riff" storage-key="riffs_help_compose">
-        <p><b>To add:</b> the keys under the staff are your keyboard. Tap a length (it lights up), then tap the
-          staff at <b>+</b> at the height of the note you want (higher = a higher note; its name shows above the staff).
-          <b>space</b> adds a rest, <b>⌫</b> removes the last note.</p>
-        <dl>
-          <template v-for="l in LENGTHS" :key="l.beats"><dt>{{ l.frac }}&nbsp;<NoteGlyph :beats="l.beats" /></dt><dd><b>{{ l.label }}</b>: {{ l.long }}</dd></template>
-          <dt>𝄽</dt><dd><b>Rest</b>: a silence (up to {{ rules.maxRests }} per riff).</dd>
-        </dl>
-        <p class="muted">A beat is one tap of your foot.</p>
+        <p><b>To add:</b> tap the staff at <b>+</b>, at the height of the note you want (higher = a higher note; its
+          name shows above it). Every note is the same length. <b>space</b> adds a rest (a pause), <b>⌫</b> removes the
+          last note.</p>
         <p><b>To change a note:</b> tap it. An <b>Edit</b> box shows which note you're changing. Tap the staff above
-          it to move it, or use ▲ ▼ (half steps, which give sharps ♯). The keys below pick its length; <b>space</b> turns it into a
-          rest (or a rest back into a note); <b>Del</b> deletes it. <b>✓ Done</b> goes back to adding.</p>
+          it to move it, or use ▲ ▼ (half steps, which give sharps ♯). <b>space</b> turns it into a rest (or a rest back into a note);
+          <b>Del</b> deletes it. <b>✓ Done</b> goes back to adding.</p>
         <h3>Other buttons</h3>
         <dl>
           <dt>🗑 Clear</dt><dd>Start over. You get a few seconds to undo it.</dd>
@@ -32,7 +27,7 @@
 
     <StaffEditor v-model="notes" v-model:selected="selected" mode="compose" :highlight="playing"
       :max-notes="rules.maxNotes" :max-rests="rules.maxRests" :lowest="rules.lowest" :highest="rules.highest"
-      :new-length="newLength" :instrument="instrument" @add="addAt" />
+      :new-length="1" plain-rhythm :instrument="instrument" @add="addAt" />
 
     <!-- The keyboard, always under the staff. Adding: pick a length, tap the staff; space adds a rest; ⌫ removes the
          last note. Editing (a note tapped): the same keys change that note; space = rest/note; Del deletes it. -->
@@ -47,12 +42,6 @@
         <span v-else class="caption">{{ addCaption }}</span>
       </div>
       <div class="keys" role="group" aria-label="Note keys">
-        <button v-for="l in LENGTHS" :key="l.beats" type="button" :title="l.label + ': ' + l.long"
-          :aria-pressed="editing ? notes[selected].b === l.beats : newLength === l.beats"
-          :class="['key', { key_on: editing ? notes[selected].b === l.beats : newLength === l.beats }]"
-          @click="editing ? setSelectedLength(l.beats) : (newLength = l.beats)">
-          <span class="key_label">{{ l.frac }}</span><NoteGlyph :beats="l.beats" />
-        </button>
         <button v-if="!editing" type="button" class="key key_space" title="Space: add a rest (a silence)" :disabled="rests >= rules.maxRests" @click="addRestAtEnd">
           <span class="key_label">rest</span>space
         </button>
@@ -106,10 +95,9 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { api, type Evaluation, type Note, type Rules } from '../ts/api'
-import { LENGTHS, TIER_LABEL, noteName } from '../ts/music'
+import { TIER_LABEL, noteName } from '../ts/music'
 import { play, type Playback } from '../ts/synth'
 import StaffEditor from './StaffEditor.vue'
-import NoteGlyph from './NoteGlyph.vue'
 import MicRecorder from './MicRecorder.vue'
 import LibraryPicker from './LibraryPicker.vue'
 import HelpSheet from './HelpSheet.vue'
@@ -122,7 +110,6 @@ const draftKey = `riffs_draft_${props.gameId}`
 const notes = ref<Note[]>(loadDraft())
 const tuneId = ref<string | undefined>(undefined)
 const selected = ref(-1)
-const newLength = ref(1)
 const bpm = ref(100)
 const playing = ref(-1)
 // shallowRef: a plain ref would wrap the object in a proxy, and "playback.value === p" below would never match
@@ -133,7 +120,6 @@ const sending = ref(false)
 
 const sounding = computed(() => notes.value.filter((n) => n.m !== null).length)
 const editing = computed(() => selected.value >= 0 && selected.value < notes.value.length)
-function lengthOf(b: number) { return LENGTHS.find((l) => l.beats === b) ?? { beats: b, label: b + ' beats', long: b + ' beats' } }
 const rests = computed(() => notes.value.length - sounding.value)
 const countOk = computed(() => sounding.value >= props.rules.minNotes && sounding.value <= props.rules.maxNotes)
 const selNote = computed(() => { const n = notes.value[selected.value]; return n && n.m !== null ? n : null })
@@ -154,7 +140,8 @@ const rewardText = computed(() => {
 })
 
 function loadDraft(): Note[] {
-  try { return JSON.parse(localStorage.getItem(draftKey) || '[]') } catch { return [] }
+  // drafts saved when notes still had lengths: even them out (every note is one beat now)
+  try { return (JSON.parse(localStorage.getItem(draftKey) || '[]') as Note[]).map((n) => ({ ...n, b: 1 })) } catch { return [] }
 }
 
 let timer = 0
@@ -171,18 +158,15 @@ watch(notes, (n) => {
 /** A tap at + adds a note at that height with the chosen length (the keyboard's lit key). */
 function addAt(pitch: number) {
   if (sounding.value >= props.rules.maxNotes) return
-  notes.value = [...notes.value, { m: pitch, b: newLength.value }]
+  notes.value = [...notes.value, { m: pitch, b: 1 }]
 }
 /** space while adding: a rest at the end, with the chosen length */
-function addRestAtEnd() { notes.value = [...notes.value, { m: null, b: newLength.value }] }
-const addCaption = computed(() => {
-  if (sounding.value >= props.rules.maxNotes) return `The riff is full (${props.rules.maxNotes} notes). Tap a note to change it.`
-  const l = lengthOf(newLength.value)
-  return `Tap the staff to add a ${l.label.toLowerCase()} (${l.long}). Tap a note to change it.`
-})
+function addRestAtEnd() { notes.value = [...notes.value, { m: null, b: 1 }] }
+const addCaption = computed(() => sounding.value >= props.rules.maxNotes
+  ? `The riff is full (${props.rules.maxNotes} notes). Tap a note to change it.`
+  : 'Tap the staff to add a note. Tap a note to change it.')
 /** ⌫ while adding: remove the last note, like typing. */
 function backspace() { notes.value = notes.value.slice(0, -1) }
-function setSelectedLength(b: number) { notes.value = notes.value.map((x, i) => (i === selected.value ? { ...x, b } : x)) }
 function nudge(d: number) {
   notes.value = notes.value.map((x, i) => (i === selected.value && x.m !== null
     ? { ...x, m: Math.min(props.rules.highest, Math.max(props.rules.lowest, x.m + d)) } : x))
@@ -220,8 +204,8 @@ function togglePlay() {
   playback.value = p
   void p.done.then(() => { if (playback.value === p) playback.value = null })
 }
-function fromMic(n: Note[]) { notes.value = n; tuneId.value = undefined; selected.value = -1 }
-function fromLibrary(n: Note[], id: string) { notes.value = n; tuneId.value = id; showLibrary.value = false; selected.value = -1 }
+function fromMic(n: Note[]) { notes.value = n.map((x) => ({ ...x, b: 1 })); tuneId.value = undefined; selected.value = -1 }
+function fromLibrary(n: Note[], id: string) { notes.value = n.map((x) => ({ ...x, b: 1 })); tuneId.value = id; showLibrary.value = false; selected.value = -1 }
 
 async function send() {
   if (evaluation.value?.tier === 'noise' && !confirm('This riff scores as "Noise?", so you get no reward. Send it anyway?')) return

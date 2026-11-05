@@ -162,7 +162,8 @@ function y(step: number) { return TOP.value + (MAX_STEP - step) * HALF }
 function colX(i: number) { return LEFT + COL * i + COL / 2 }
 function stepFromY(py: number) { return Math.round(MAX_STEP - (py - TOP.value) / HALF) }
 function stemUp(m: number) { return stepOf(m).step < 6 }
-function displayBeats(n: Note) { return props.plainRhythm ? 1 : n.b }
+/** with plainRhythm (every note the same length) notes are drawn as open heads with no stem, a "full note" */
+function displayBeats(n: Note) { return props.plainRhythm ? 4 : n.b }
 
 function ledgers(step: number): number[] {
   const l: number[] = []
