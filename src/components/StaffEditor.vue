@@ -1,7 +1,7 @@
 <template>
   <div class="staff_editor">
     <div ref="scroller" class="staff_scroll">
-      <svg :width="width" :height="height" :viewBox="`0 0 ${width} ${height}`" class="staff_svg"
+      <svg :viewBox="`0 0 ${width} ${height}`" class="staff_svg"
         role="img" :aria-label="ariaLabel" @pointerdown="onTap">
         <!-- the playing note's column -->
         <rect v-if="highlight >= 0 && highlight < slots.length" :x="colX(highlight) - COL / 2" y="0" :width="COL" :height="height" class="staff_playing" />
@@ -84,7 +84,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import type { Mark, Note } from '../ts/api'
 import { midiOfStep, noteName, stepOf } from '../ts/music'
 import { blip } from '../ts/synth'
@@ -124,9 +124,9 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{ 'update:modelValue': [Note[]]; add: [pitch: number]; cancel: [] }>()
 const selected = defineModel<number>('selected', { default: -1 })
 
-const COL = 42
-const LEFT = 52
-const HALF = 8 // half a space: one diatonic step
+const COL = 36
+const LEFT = 48
+const HALF = 9 // half a space: one diatonic step (a bit taller, since the staff is scaled to fit the screen)
 // just room for the game's notes, G3 (step -3) to C6 (step 14), with their ledger lines: no stems any more
 const MAX_STEP = 15 // a step above C6
 const MIN_STEP = -4 // a step below G3
@@ -137,7 +137,12 @@ const soundingCount = computed(() => slots.value.filter((n) => n.m !== null).len
 const restCount = computed(() => slots.value.length - soundingCount.value)
 const canAppend = computed(() => props.mode === 'compose'
   && (soundingCount.value < props.maxNotes || restCount.value < props.maxRests))
-const width = computed(() => LEFT + COL * (slots.value.length + (canAppend.value ? 1 : 0)) + 12)
+/**
+ * The staff is scaled to the screen width (never scrolls). Writing: always sized for the biggest riff (8 notes,
+ * 2 rests and the + column), so the notes don't shrink as you add them. Guessing / viewing: sized for the riff.
+ */
+const columns = computed(() => (props.mode === 'compose' ? props.maxNotes + props.maxRests + 1 : Math.max(slots.value.length, 6)))
+const width = computed(() => LEFT + COL * columns.value + 12)
 // above the staff: a row of note names, and in learner mode a row of shape arrows under it
 const NAME_ROW = 18
 const TOP = computed(() => (props.contour ? 44 : 26))
@@ -156,9 +161,6 @@ const possibleSteps = computed(() => {
 const ariaLabel = computed(() => slots.value.map((n) => (n.m === null ? 'rest' : noteName(n.m))).join(', ') || 'empty staff')
 
 const scroller = ref<HTMLElement | null>(null)
-watch(() => slots.value.length, async (len, old) => {
-  if (len > (old ?? 0)) { await nextTick(); scroller.value?.scrollTo({ left: scroller.value.scrollWidth, behavior: 'smooth' }) }
-})
 
 function y(step: number) { return TOP.value + (MAX_STEP - step) * HALF }
 function colX(i: number) { return LEFT + COL * i + COL / 2 }
@@ -236,7 +238,7 @@ function onTap(e: PointerEvent) {
   box-shadow: inset 0 0 0 1px var(--paper-edge);
   touch-action: pan-x;
 }
-.staff_svg { display: block; cursor: pointer; user-select: none; -webkit-user-select: none; }
+.staff_svg { display: block; width: 100%; height: auto; cursor: pointer; user-select: none; -webkit-user-select: none; }
 .staff_line { stroke: var(--ink-soft); stroke-width: 1.2; }
 .staff_clef { font-size: 64px; fill: var(--ink); font-family: "Noto Music", "Bravura", serif; }
 .staff_head { fill: var(--ink); }

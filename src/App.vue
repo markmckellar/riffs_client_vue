@@ -1,9 +1,16 @@
 <template>
   <header class="app_header">
     <button type="button" class="app_brand" @click="go('')"><span aria-hidden="true">🎸</span> {{ gameName }}</button>
-    <nav v-if="me" class="app_user">
-      <span class="app_user_name">{{ me.name }}</span>
-      <button type="button" class="tool" @click="signOut">Sign out</button>
+    <!-- the menu: who you are and Sign out (room for more later) -->
+    <nav v-if="me" class="app_menu">
+      <button type="button" class="app_menu_btn" :aria-expanded="menuOpen" aria-label="Menu" @click.stop="menuOpen = !menuOpen">☰</button>
+      <div v-if="menuOpen" class="app_menu_panel" role="menu" @click.stop>
+        <div class="app_menu_who">
+          <span class="muted">Signed in as</span>
+          <strong>{{ me.name }}</strong>
+        </div>
+        <button type="button" class="app_menu_item" role="menuitem" @click="menuOpen = false; signOut()">Sign out</button>
+      </div>
     </nav>
   </header>
 
@@ -63,6 +70,12 @@ async function signedInSetup() {
   if ('Notification' in window && Notification.permission === 'default') void Notification.requestPermission().catch(() => {})
 }
 async function setLearner(on: boolean) { try { me.value = await api.setLearner(on) } catch { /* offline: unchanged */ } }
+// the ☰ menu closes on a tap anywhere else, on Escape, and when the page changes
+const menuOpen = ref(false)
+document.addEventListener('click', () => { menuOpen.value = false })
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') menuOpen.value = false })
+window.addEventListener('hashchange', () => { menuOpen.value = false })
+
 async function signOut() {
   await api.logout(); me.value = null; stopPolling(); go('')
   toasts.value = []
@@ -121,8 +134,16 @@ document.addEventListener('visibilitychange', () => {
   padding: 10px 16px; padding-top: max(10px, env(safe-area-inset-top)); background: color-mix(in srgb, var(--bg) 88%, transparent);
   backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); }
 .app_brand { background: none; border: 0; color: var(--text); font: inherit; font-weight: 800; font-size: 1.1rem; cursor: pointer; padding: 0; }
-.app_user { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.app_user_name { color: var(--text-muted); font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 40vw; }
+.app_menu { position: relative; }
+.app_menu_btn { width: 42px; height: 38px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font-size: 1.3rem; line-height: 1; cursor: pointer; }
+.app_menu_panel {
+  position: absolute; right: 0; top: calc(100% + 6px); min-width: 200px; max-width: 80vw; z-index: 30; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 8px; display: grid; gap: 4px;
+}
+.app_menu_who { display: grid; padding: 6px 8px 10px; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+.app_menu_who strong { font-size: 1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app_menu_item { text-align: left; background: none; border: 0; color: var(--text); font: inherit; padding: 10px 8px; border-radius: var(--radius-sm); cursor: pointer; }
+.app_menu_item:hover { background: var(--surface-2); }
 .app_main { max-width: 640px; margin: 0 auto; padding: 14px 16px 40px; }
 .toasts { position: fixed; bottom: max(16px, env(safe-area-inset-bottom)); left: 16px; right: 16px; display: grid; gap: 8px; z-index: 20; justify-items: center; }
 .toast { max-width: 480px; width: 100%; background: var(--accent); color: var(--accent-contrast); border: 0; border-radius: var(--radius); padding: 12px 14px; font: inherit; font-weight: 600; box-shadow: var(--shadow); cursor: pointer; text-align: left; }
