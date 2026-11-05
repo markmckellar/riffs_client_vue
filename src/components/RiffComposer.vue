@@ -12,7 +12,7 @@
         <h3>Other buttons</h3>
         <dl>
           <dt>🗑 Clear</dt><dd>Start over. You get a few seconds to undo it.</dd>
-          <dt>▶</dt><dd>Hear your riff. Tempo sets how fast.</dd>
+          <dt>▶</dt><dd>Hear your riff. <b>Sound</b> picks the instrument.</dd>
           <dt>🎙</dt><dd><b>Play it in:</b> sing, whistle or play into the phone, one note at a time, and it writes the notes down.</dd>
           <dt>📚</dt><dd><b>Famous tunes:</b> use a piece of a well-known tune (easier to guess, so half points).</dd>
         </dl>
@@ -69,7 +69,7 @@
       <button v-if="undoNotes" type="button" class="btn btn_undo" @click="undoClear">↶ Undo clear</button>
       <button v-else type="button" class="btn btn_ghost" :disabled="!notes.length" @click="clear">🗑 Clear</button>
     </div>
-    <label class="tempo">Tempo <input v-model.number="bpm" type="range" min="60" max="160" step="5" /> {{ bpm }} bpm</label>
+    <InstrumentPicker />
 
     <LibraryPicker v-if="showLibrary" :instrument="instrument" @pick="fromLibrary" @close="showLibrary = false" />
 
@@ -101,6 +101,7 @@ import StaffEditor from './StaffEditor.vue'
 import MicRecorder from './MicRecorder.vue'
 import LibraryPicker from './LibraryPicker.vue'
 import HelpSheet from './HelpSheet.vue'
+import InstrumentPicker from './InstrumentPicker.vue'
 import StepButtons from './StepButtons.vue'
 
 const props = defineProps<{ gameId: string; rules: Rules; instrument: string; opponentName: string }>()
@@ -110,7 +111,7 @@ const draftKey = `riffs_draft_${props.gameId}`
 const notes = ref<Note[]>(loadDraft())
 const tuneId = ref<string | undefined>(undefined)
 const selected = ref(-1)
-const bpm = ref(100)
+const bpm = ref(100)    // one steady speed (no tempo slider)
 const playing = ref(-1)
 // shallowRef: a plain ref would wrap the object in a proxy, and "playback.value === p" below would never match
 const playback = shallowRef<Playback | null>(null)
@@ -238,8 +239,6 @@ onBeforeUnmount(() => playback.value?.stop())
 .toolbar { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; }
 .tools { display: flex; gap: 6px; flex-wrap: wrap; }
 .row { display: flex; gap: 8px; flex-wrap: wrap; }
-.tempo { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 0.85rem; }
-.tempo input { flex: 1; max-width: 220px; accent-color: var(--accent); }
 .sense { background: var(--surface-2); border-radius: var(--radius); padding: 10px 12px; border-left: 4px solid var(--text-muted); }
 .sense_catchy { border-left-color: var(--accent); }
 .sense_musical { border-left-color: var(--accent-2); }

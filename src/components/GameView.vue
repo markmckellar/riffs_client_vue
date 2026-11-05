@@ -15,18 +15,6 @@
       </div>
     </div>
 
-    <!-- one row: what happened last round, hear that riff, and the sound to play riffs with -->
-    <div v-if="lastDone && game.turn !== 'over'" class="card reveal">
-      <div class="reveal_text">
-        <strong>Round {{ lastDone.number }}:</strong>
-        {{ revealText(lastDone) }}
-        <span v-if="lastDone.tier" class="tier">{{ TIER_LABEL[lastDone.tier] }}</span>
-      </div>
-      <button v-if="lastDone.riff" type="button" class="tool reveal_hear" title="Hear that riff" @click="play(lastDone.riff, instrument, 100)">▶ Hear it</button>
-      <InstrumentPicker v-model="instrument" bare />
-    </div>
-    <!-- round 1 (nothing to report yet): just the sound picker -->
-    <div v-else class="sound_row"><InstrumentPicker v-model="instrument" /></div>
 
     <div class="card">
       <RiffComposer v-if="game.turn === 'compose'" :key="'c' + current.number" :game-id="game.id" :rules="rules"
@@ -47,6 +35,7 @@
         <StaffEditor :model-value="current.riff ?? []" mode="view" :highlight="playing" />
         <div class="row">
           <button type="button" class="btn" @click="playMine">▶ Play my riff</button>
+          <InstrumentPicker bare />
           <span v-if="current.tier" class="tier">{{ TIER_LABEL[current.tier] }} · {{ current.score }}</span>
         </div>
         <p class="muted">🎸 {{ game.opponent.name }} has {{ game.opponent.strings }} strings left<template v-if="current.wrong">
@@ -75,9 +64,10 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { api, type GameView, type Note, type Round, type Rules } from '../ts/api'
+import { api, type GameView, type Note, type Rules } from '../ts/api'
 import { TIER_LABEL } from '../ts/music'
 import { play, snap } from '../ts/synth'
+import { instrument } from '../ts/instrument'
 import InstrumentPicker from './InstrumentPicker.vue'
 import RiffComposer from './RiffComposer.vue'
 import RiffGuesser from './RiffGuesser.vue'
@@ -92,13 +82,11 @@ const game = ref<GameView | null>(null)
 const error = ref('')
 const busy = ref(false)
 const playing = ref(-1)
-const instrument = ref(storedInstrument())
+// the sound riffs play with: shared by every screen (ts/instrument.ts)
 
 const current = computed(() => game.value!.rounds[game.value!.rounds.length - 1])
-const lastDone = computed(() => [...(game.value?.rounds ?? [])].reverse().find((r) => r.phase === 'solved' || r.phase === 'failed'))
 const won = computed(() => game.value?.winner === game.value?.me.id)
 
-function storedInstrument() { try { return localStorage.getItem('riffs_instrument') || 'piano' } catch { return 'piano' } }
 
 async function load() {
   try { game.value = await api.game(props.gameId); error.value = '' } catch (e) { error.value = (e as Error).message }
@@ -144,15 +132,6 @@ const overText = computed(() => {
   return `${loser} snapped all ${props.rules.strings} strings 🎸💥`
 })
 
-function revealText(r: Round) {
-  const me = game.value!.me.id
-  const listenerName = r.listener === me ? 'You' : game.value!.opponent.name
-  const n = r.guesses.length
-  const snapped = r.wrong ? ` (${r.wrong} ${r.wrong === 1 ? 'string' : 'strings'} snapped)` : ''
-  return r.phase === 'solved'
-    ? `${listenerName} guessed the riff in ${n} ${n === 1 ? 'try' : 'tries'}${snapped}.`
-    : `${listenerName} snapped the last string.`
-}
 function playMine() { if (current.value.riff) play(current.value.riff, instrument.value, 100, (i) => { playing.value = i }) }
 </script>
 
@@ -168,12 +147,6 @@ function playMine() { if (current.value.riff) play(current.value.riff, instrumen
 .level { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
 .level_easy { color: var(--good); } .level_medium { color: var(--accent); } .level_hard { color: var(--bad); }
 .online { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--good); }
-.sound_row { display: flex; justify-content: flex-end; margin: -4px 2px -6px; }
-.reveal { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 0.85rem; padding: 10px 12px; }
-/* the message takes what's left; on a very narrow screen the buttons wrap under it rather than squash it */
-.reveal_text { flex: 1 1 150px; min-width: 0; }
-.reveal_hear { flex: none; padding: 6px 10px; min-height: 36px; white-space: nowrap; }
-.reveal :deep(.instrument) { margin-left: auto; }
 .tier { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 99px; background: var(--surface-2); font-size: 0.75rem; font-weight: 700; color: var(--accent); }
 .waiting, .over { text-align: center; padding: 16px 0; }
 .waiting_icon, .over_icon { font-size: 2.6rem; }

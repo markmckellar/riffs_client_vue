@@ -8,7 +8,7 @@
           work out the rest from it: is the next one higher or lower, a small step or a jump?</p>
         <h3>Buttons</h3>
         <dl>
-          <dt>▶</dt><dd><b>Play the riff</b> as often as you like. Slide Tempo left to slow it down.</dd>
+          <dt>▶</dt><dd><b>Play the riff</b> as often as you like. The drop-down next to it picks the sound.</dd>
           <dt>🎹</dt><dd><b>The piano:</b> tap a key to hear it and put that note in the selected slot. Try keys until it
             sounds right, then <b>⏎</b> moves to the next note; <b>⌫</b> empties a note (or the one before). The C keys
             are marked C4, C5, C6. You can also tap the staff.</dd>
@@ -43,15 +43,14 @@
         </dl>
       </HelpSheet>
     </header>
+    <div class="row">
+      <button type="button" class="btn btn_primary" @click="togglePlay">{{ playback ? '■ Stop' : '▶ Play the riff' }}</button>
+      <InstrumentPicker bare />
+    </div>
     <label class="learner_switch">
       <input type="checkbox" :checked="me.learner" :disabled="busy" @change="emit('learner', !me.learner)" />
       🎓 Learner mode <small class="muted">shape arrows, hear one note, where it could be, a free note every {{ FREE_EVERY }} misses (half points)</small>
     </label>
-
-    <div class="row">
-      <button type="button" class="btn btn_primary" @click="togglePlay">{{ playback ? '■ Stop' : '▶ Play the riff' }}</button>
-      <label class="tempo">Tempo <input v-model.number="bpm" type="range" min="50" max="160" step="5" /></label>
-    </div>
 
 
     <StaffEditor v-model="slots" v-model:selected="selected" mode="guess" plain-rhythm :locked="round.revealed"
@@ -126,6 +125,7 @@ import StaffEditor from './StaffEditor.vue'
 import GuessHistory from './GuessHistory.vue'
 import HelpSheet from './HelpSheet.vue'
 import PianoKeys from './PianoKeys.vue'
+import InstrumentPicker from './InstrumentPicker.vue'
 
 const props = defineProps<{ round: Round; rules: Rules; instrument: string; me: Player; busy: boolean }>()
 const emit = defineEmits<{ guess: [notes: number[], beats: number[]]; hint: []; extraString: []; learner: [boolean] }>()
@@ -133,7 +133,7 @@ const FREE_EVERY = 2
 
 const slots = ref<Note[]>([])
 const selected = ref(-1)
-const bpm = ref(90)
+const bpm = ref(90)    // riffs play at one steady speed (no tempo slider)
 // shallowRef: a plain ref would wrap the object in a proxy, and "playback.value === p" below would never match
 const playback = shallowRef<Playback | null>(null)
 const playingSlot = ref(-1)
@@ -285,8 +285,6 @@ onBeforeUnmount(() => playback.value?.stop())
 .guesser_head h2 { margin: 0; font-size: 1.25rem; }
 .muted { color: var(--text-muted); font-size: 0.9rem; }
 .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.tempo { display: flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: 0.85rem; }
-.tempo input { width: 110px; accent-color: var(--accent); }
 .toolbar { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
 .tools { display: flex; gap: 6px; flex-wrap: wrap; }
 .learner_switch { display: flex; gap: 8px; align-items: baseline; font-size: 0.9rem; cursor: pointer; }

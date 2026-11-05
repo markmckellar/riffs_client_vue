@@ -2,7 +2,7 @@
   <!-- Which sound riffs play with, on this phone. A small drop-down to save space. -->
   <label class="instrument">
     <span v-if="!bare" class="instrument_label">Sound</span>
-    <select :value="model" aria-label="Sound" @change="pick(($event.target as HTMLSelectElement).value)">
+    <select :value="instrument" aria-label="Sound" @change="pick(($event.target as HTMLSelectElement).value)">
       <option v-for="i in INSTRUMENTS" :key="i.id" :value="i.id">{{ i.emoji }} {{ i.name }}</option>
     </select>
   </label>
@@ -10,11 +10,11 @@
 
 <script setup lang="ts">
 import { INSTRUMENTS, blip } from '../ts/synth'
-const model = defineModel<string>({ required: true })
+import { instrument } from '../ts/instrument'
+
 defineProps<{ /** no "Sound" label (when it shares a crowded row) */ bare?: boolean }>()
 function pick(id: string) {
-  model.value = id
-  try { localStorage.setItem('riffs_instrument', id) } catch { /* storage blocked */ }
+  instrument.value = id    // shared by every screen and remembered (ts/instrument.ts)
   blip(67, id)
 }
 </script>
