@@ -53,6 +53,7 @@
     <StaffEditor v-model="slots" v-model:selected="selected" mode="guess" plain-rhythm :locked="round.revealed"
       :marks="lastGuess?.marks" :mark-hints="lastGuess?.hints" :length-marks="lastGuess?.lengths" :highlight="playingSlot"
       :contour="me.learner ? contour : null" :possible="me.learner ? possible : null"
+      :peek="developer ? peek : null"
       :lowest="rules.lowest" :highest="rules.highest" :instrument="instrument" />
 
     <!-- the note keyboard: a piano. A key fills the selected slot (or the first empty one) and moves on, like typing. -->
@@ -115,7 +116,7 @@ import HelpSheet from './HelpSheet.vue'
 import PianoKeys from './PianoKeys.vue'
 import InstrumentPicker from './InstrumentPicker.vue'
 
-const props = defineProps<{ round: Round; rules: Rules; instrument: string; me: Player; busy: boolean }>()
+const props = defineProps<{ round: Round; rules: Rules; instrument: string; me: Player; busy: boolean; /** testing: show the answer faintly */ developer?: boolean }>()
 const emit = defineEmits<{ guess: [notes: number[], beats: number[]]; hint: []; extraString: []; learner: [boolean] }>()
 const FREE_EVERY = 2
 
@@ -142,6 +143,8 @@ watch(() => `${props.round.number}|${props.round.guesses.length}|${props.round.r
 
 // ---- learner mode helpers (the phone already has the riff's notes, to play them)
 const answer = computed(() => (props.round.riff ?? []).filter((n) => n.m !== null).map((n) => n.m as number))
+/** developers: the answer for every note not yet known, drawn faintly on the staff (for testing) */
+const peek = computed(() => answer.value.map((m, i) => (props.round.revealed[i] == null ? m : null)))
 /** up / down / same, from each note to the next: the melody's shape */
 const contour = computed(() => answer.value.map((m, i) => (i === 0 ? null : m > answer.value[i - 1] ? 'up' : m < answer.value[i - 1] ? 'down' : 'same')))
 

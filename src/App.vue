@@ -19,7 +19,8 @@
     <p v-else-if="loadError" class="error">{{ loadError }}</p>
     <SignIn v-else-if="!me" :config="config!" @signed-in="onSignedIn" />
     <template v-else-if="rules">
-      <GameView v-if="route.gameId" :game-id="route.gameId" :rules="rules" :refresh="refresh" @back="go('')" @rematch="rematch" />
+      <GameView v-if="route.gameId" :game-id="route.gameId" :rules="rules" :refresh="refresh"
+        :developer="!!me.attributes?.includes('developer')" @back="go('')" @rematch="rematch" />
       <LobbyView v-else :refresh="refresh" :me="me" @open="(id) => go('game/' + id)" @learner="setLearner" />
     </template>
   </main>

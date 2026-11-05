@@ -29,6 +29,16 @@
           </text>
         </g>
 
+        <!-- developers: the answer, faint grey, under each note not yet known -->
+        <g v-if="peek" class="staff_peek">
+          <template v-for="(m, i) in peek" :key="'pk' + i">
+            <g v-if="m != null">
+              <line v-for="l in ledgers(stepOf(m).step)" :key="'pl' + l" :x1="colX(i) - 13" :x2="colX(i) + 13" :y1="y(l)" :y2="y(l)" />
+              <text v-if="stepOf(m).sharp" :x="colX(i) - 19" :y="y(stepOf(m).step) + 5">♯</text>
+              <ellipse :cx="colX(i)" :cy="y(stepOf(m).step)" rx="7.5" ry="5.5" :transform="`rotate(-20 ${colX(i)} ${y(stepOf(m).step)})`" />
+            </g>
+          </template>
+        </g>
         <g v-for="(n, i) in slots" :key="i">
           <!-- empty guess slot -->
           <g v-if="n.m === null && mode === 'guess'">
@@ -117,9 +127,11 @@ const props = withDefaults(defineProps<{
   contour?: (string | null)[] | null
   /** learner mode: pitches the selected note could still be, from the feedback so far */
   possible?: number[] | null
+  /** developers: the hidden answer per note (null where not shown), drawn faintly under the guess */
+  peek?: (number | null)[] | null
 }>(), {
   mode: 'compose', locked: () => [], marks: null, lengthMarks: null, markHints: null, highlight: -1, maxNotes: 8, maxRests: 2,
-  lowest: 55, highest: 84, newLength: 1, newRest: false, ghost: null, instrument: 'piano', plainRhythm: false, contour: null, possible: null,
+  lowest: 55, highest: 84, newLength: 1, newRest: false, ghost: null, instrument: 'piano', plainRhythm: false, contour: null, possible: null, peek: null,
 })
 const emit = defineEmits<{ 'update:modelValue': [Note[]]; add: [pitch: number]; cancel: [] }>()
 const selected = defineModel<number>('selected', { default: -1 })
@@ -275,5 +287,9 @@ function onTap(e: PointerEvent) {
 .staff_names .staff_names_sel { fill: #c2410c; }
 .staff_names .staff_names_locked { fill: #15803d; }
 .staff_names .staff_names_dim { fill: var(--ink-soft); font-size: 11px; font-weight: 600; }
+.staff_peek { opacity: 0.35; }
+.staff_peek ellipse { fill: none; stroke: #6f6a80; stroke-width: 2; }
+.staff_peek line { stroke: #6f6a80; stroke-width: 1.2; }
+.staff_peek text { fill: #6f6a80; font-size: 17px; font-weight: 700; }
 .staff_contour text { fill: #6b5bb5; font-size: 17px; font-weight: 800; text-anchor: middle; }
 </style>

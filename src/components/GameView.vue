@@ -20,7 +20,7 @@
       <RiffComposer v-if="game.turn === 'compose'" :key="'c' + current.number" :game-id="game.id" :rules="rules"
         :instrument="instrument" :opponent-name="game.opponent.name" @send="sendRiff" />
 
-      <RiffGuesser v-else-if="game.turn === 'guess'" :round="current" :rules="rules" :instrument="instrument" :me="game.me"
+      <RiffGuesser v-else-if="game.turn === 'guess'" :round="current" :rules="rules" :instrument="instrument" :me="game.me" :developer="developer"
         :busy="busy" @guess="guess" @hint="act(() => api.hint(game!.id))" @extra-string="act(() => api.extraString(game!.id))"
         @learner="(on) => act(async () => { await api.setLearner(on); return api.game(game!.id) })" />
 
@@ -75,7 +75,7 @@ import StaffEditor from './StaffEditor.vue'
 import GuitarStrings from './GuitarStrings.vue'
 import GuessHistory from './GuessHistory.vue'
 
-const props = defineProps<{ gameId: string; rules: Rules; refresh: number }>()
+const props = defineProps<{ gameId: string; rules: Rules; refresh: number; /** a developer sees the hidden riff faintly */ developer?: boolean }>()
 const emit = defineEmits<{ back: []; rematch: [opponentId: string] }>()
 
 const game = ref<GameView | null>(null)

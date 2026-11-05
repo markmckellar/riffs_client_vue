@@ -5,7 +5,8 @@ export const SERVER: string = import.meta.env.VITE_RIFFS_SERVER ?? '/'
 /** One note or rest: m = MIDI pitch (60 = middle C) or null for a rest, b = length in beats. */
 export interface Note { m: number | null; b: number }
 
-export interface Me { id: string; name: string; email?: string; wins: number; losses: number; points: number; learner: boolean }
+/** attributes: tags set on the server, e.g. 'developer' */
+export interface Me { id: string; name: string; email?: string; wins: number; losses: number; points: number; learner: boolean; attributes?: string[] }
 export interface AuthConfig { game: string; googleClientId: string; devLogin: boolean; guestLogin: boolean; me: Me | null }
 
 export interface Player {
