@@ -5,6 +5,12 @@
     </button>
     <p class="muted small">Plays someone who's online, or a bot if nobody is. Or pick a bot below.</p>
 
+    <label v-if="me" class="card learner_card">
+      <input type="checkbox" :checked="me.learner" @change="emit('learner', !me.learner)" />
+      <span><strong>🎓 Learner mode</strong><br><small class="muted">Helpers for training your ear while you guess: the melody's
+        shape, hear one note at a time, where a note could be, and a free note every 2 misses. Guessed riffs earn half points.</small></span>
+    </label>
+
     <section class="card">
       <h2>Your games</h2>
       <p v-if="!games.length" class="muted">No games yet. Start one!</p>
@@ -49,12 +55,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { api, type BotLevel, type GameView, type Lobbyist } from '../ts/api'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { api, type BotLevel, type GameView, type Lobbyist, type Me } from '../ts/api'
 import EncoreMeter from './EncoreMeter.vue'
 
-const props = defineProps<{ refresh: number }>()
-const emit = defineEmits<{ open: [id: string] }>()
+const props = defineProps<{ refresh: number; me?: Me | null }>()
+const emit = defineEmits<{ open: [id: string]; learner: [boolean] }>()
 const games = ref<GameView[]>([])
 const players = ref<Lobbyist[]>([])
 const starting = ref(false)
@@ -68,6 +74,9 @@ async function load() {
   try { [games.value, players.value] = await Promise.all([api.games(), api.players()]) } catch (e) { error.value = (e as Error).message }
 }
 watch(() => props.refresh, load, { immediate: true })
+// the list also refreshes by itself (whose turn it is), in case an event was missed
+const recheck = window.setInterval(() => { if (!document.hidden) void load() }, 10000)
+onBeforeUnmount(() => clearInterval(recheck))
 
 async function start(opponentId?: string) {
   starting.value = true
@@ -86,6 +95,9 @@ function statusText(g: GameView) {
 </script>
 
 <style scoped>
+.learner_card { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.learner_card input { accent-color: var(--accent); width: 20px; height: 20px; margin-top: 2px; }
+.learner_card small { font-size: 0.8rem; }
 .lobby { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); }
 h2 { margin: 0 0 8px; font-size: 1.1rem; }
 .list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }

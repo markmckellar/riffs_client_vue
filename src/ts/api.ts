@@ -5,11 +5,11 @@ export const SERVER: string = import.meta.env.VITE_RIFFS_SERVER ?? '/'
 /** One note or rest: m = MIDI pitch (60 = middle C) or null for a rest, b = length in beats. */
 export interface Note { m: number | null; b: number }
 
-export interface Me { id: string; name: string; email?: string; wins: number; losses: number; points: number }
+export interface Me { id: string; name: string; email?: string; wins: number; losses: number; points: number; learner: boolean }
 export interface AuthConfig { game: string; googleClientId: string; devLogin: boolean; guestLogin: boolean; me: Me | null }
 
 export interface Player {
-  id: string; name: string; bot: boolean; level?: BotLevel; online: boolean
+  id: string; name: string; bot: boolean; level?: BotLevel; online: boolean; learner: boolean
   encores: number; points: number; hints: number; extraStrings: number
 }
 export interface Guess { notes: number[]; marks: Mark[]; hints: (string | null)[]; correct: boolean; at: number }
@@ -18,7 +18,7 @@ export interface Round {
   number: number; composer: string; listener: string; role: 'composer' | 'listener'
   phase: 'composing' | 'guessing' | 'solved' | 'failed'
   length: number; strings: number; stringsLeft: number; revealed: (number | null)[]
-  guesses: Guess[]; hintsUsed: number; fromLibrary: boolean
+  guesses: Guess[]; hintsUsed: number; freeNotes: number; learner: boolean; fromLibrary: boolean
   riff?: Note[]; score?: number; tier?: string; tuneId?: string | null
 }
 export type Turn = 'compose' | 'wait_compose' | 'guess' | 'wait_guess' | 'over'
@@ -60,6 +60,7 @@ export const api = {
   devLogin: (name: string) => call<Me>('POST', 'api/auth/dev', { name }),
   guestLogin: (name: string) => call<Me>('POST', 'api/auth/guest', { name }),
   logout: () => call<unknown>('POST', 'api/auth/logout'),
+  setLearner: (learner: boolean) => call<Me>('POST', 'api/me/settings', { learner }),
   rules: () => call<Rules>('GET', 'api/riffs/rules'),
   players: () => call<Lobbyist[]>('GET', 'api/players'),
   games: () => call<GameView[]>('GET', 'api/games'),

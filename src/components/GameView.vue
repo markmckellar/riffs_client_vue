@@ -2,13 +2,13 @@
   <div v-if="game" class="game">
     <div class="scoreboard">
       <div class="side">
-        <span class="side_name">You</span>
+        <span class="side_name">You<span v-if="game.me.learner" title="learner mode"> 🎓</span></span>
         <EncoreMeter :count="game.me.encores" :max="rules.encores" />
         <span class="side_pts">{{ game.me.points }} pts</span>
       </div>
       <div class="vs">Round {{ current.number }}</div>
       <div class="side side_right">
-        <span class="side_name"><span v-if="game.opponent.bot" title="bot">🤖 </span>{{ game.opponent.name }} <i v-if="game.opponent.online && !game.opponent.bot" class="online" title="online"></i></span>
+        <span class="side_name"><span v-if="game.opponent.bot" title="bot">🤖 </span><span v-if="game.opponent.learner" title="learner mode: they get ear-training helpers">🎓 </span>{{ game.opponent.name }} <i v-if="game.opponent.online && !game.opponent.bot" class="online" title="online"></i></span>
         <span v-if="game.opponent.level" :class="['level', 'level_' + game.opponent.level]">{{ game.opponent.level }}</span>
         <EncoreMeter :count="game.opponent.encores" :max="rules.encores" />
         <span class="side_pts">{{ game.opponent.points }} pts</span>
@@ -34,7 +34,8 @@
         :instrument="instrument" :opponent-name="game.opponent.name" @send="sendRiff" />
 
       <RiffGuesser v-else-if="game.turn === 'guess'" :round="current" :rules="rules" :instrument="instrument" :me="game.me"
-        :busy="busy" @guess="guess" @hint="act(() => api.hint(game!.id))" @extra-string="act(() => api.extraString(game!.id))" />
+        :busy="busy" @guess="guess" @hint="act(() => api.hint(game!.id))" @extra-string="act(() => api.extraString(game!.id))"
+        @learner="(on) => act(async () => { await api.setLearner(on); return api.game(game!.id) })" />
 
       <div v-else-if="game.turn === 'wait_compose'" class="waiting">
         <div class="waiting_icon">✍️🎼</div>
@@ -73,7 +74,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { api, type GameView, type Note, type Round, type Rules } from '../ts/api'
 import { TIER_LABEL } from '../ts/music'
 import { play } from '../ts/synth'
@@ -104,6 +105,14 @@ async function load() {
   try { game.value = await api.game(props.gameId); error.value = '' } catch (e) { error.value = (e as Error).message }
 }
 watch(() => [props.gameId, props.refresh], load, { immediate: true })
+
+// Don't rely only on the events feed (it's in memory; a server restart loses it): while it's the other player's
+// turn, ask for the game every few seconds, and again whenever the page comes back into view.
+const waiting = computed(() => game.value?.turn === 'wait_compose' || game.value?.turn === 'wait_guess')
+const recheck = window.setInterval(() => { if (waiting.value && !document.hidden) void load() }, 5000)
+function onVisible() { if (!document.hidden) void load() }
+onMounted(() => document.addEventListener('visibilitychange', onVisible))
+onBeforeUnmount(() => { clearInterval(recheck); document.removeEventListener('visibilitychange', onVisible) })
 
 async function act(f: () => Promise<GameView>) {
   busy.value = true

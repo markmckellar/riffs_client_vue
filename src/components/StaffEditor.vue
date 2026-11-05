@@ -11,6 +11,16 @@
         <line v-for="s in [2, 4, 6, 8, 10]" :key="'l' + s" :x1="8" :x2="width - 8" :y1="y(s)" :y2="y(s)" class="staff_line" />
         <text :x="14" :y="y(2) + 12" class="staff_clef">𝄞</text>
 
+        <!-- learner: where the selected note could still be -->
+        <g v-if="possibleSteps.length" class="staff_possible">
+          <rect v-for="p in possibleSteps" :key="'p' + p.step" :x="colX(selected) - 15" :y="y(p.step) - 4" width="30" height="8" rx="4"
+            :class="{ staff_possible_sharp: p.sharpOnly }" />
+        </g>
+        <!-- learner: the melody's shape -->
+        <g v-if="contour" class="staff_contour">
+          <text v-for="(c, i) in contour" v-show="c" :key="'c' + i" :x="colX(i) - COL / 2" y="20">{{ c === 'up' ? '↗' : c === 'down' ? '↘' : '→' }}</text>
+        </g>
+
         <g v-for="(n, i) in slots" :key="i">
           <!-- empty guess slot -->
           <g v-if="n.m === null && mode === 'guess'">
@@ -85,9 +95,13 @@ const props = withDefaults(defineProps<{
   instrument?: string
   /** guess mode: draw every note as a quarter (the rhythm isn't guessed) */
   plainRhythm?: boolean
+  /** learner mode: the melody's shape, per note: up / down / same than the note before (first: null) */
+  contour?: (string | null)[] | null
+  /** learner mode: pitches the selected note could still be, from the feedback so far */
+  possible?: number[] | null
 }>(), {
   mode: 'compose', locked: () => [], marks: null, markHints: null, highlight: -1, maxNotes: 8, maxRests: 2,
-  lowest: 55, highest: 84, newLength: 1, instrument: 'piano', plainRhythm: false,
+  lowest: 55, highest: 84, newLength: 1, instrument: 'piano', plainRhythm: false, contour: null, possible: null,
 })
 const emit = defineEmits<{ 'update:modelValue': [Note[]] }>()
 const selected = defineModel<number>('selected', { default: -1 })
@@ -97,14 +111,22 @@ const LEFT = 52
 const HALF = 8 // half a space: one diatonic step
 const MAX_STEP = 16 // E6, room above C6
 const MIN_STEP = -5 // F3, room below G3
-const TOP = 10
 
 const slots = computed(() => props.modelValue)
 const editable = computed(() => props.mode !== 'view')
 const soundingCount = computed(() => slots.value.filter((n) => n.m !== null).length)
 const canAppend = computed(() => props.mode === 'compose' && soundingCount.value < props.maxNotes)
 const width = computed(() => LEFT + COL * (slots.value.length + (canAppend.value ? 1 : 0)) + 12)
-const height = computed(() => TOP + (MAX_STEP - MIN_STEP) * HALF + 34)
+// room for the shape arrows above the staff in learner mode
+const TOP = computed(() => (props.contour ? 30 : 10))
+const height = computed(() => TOP.value + (MAX_STEP - MIN_STEP) * HALF + 34)
+/** the staff positions (steps) the selected note could be at, and whether only as a sharp */
+const possibleSteps = computed(() => {
+  if (!props.possible || selected.value < 0) return []
+  const m = new Map<number, boolean>()
+  for (const p of props.possible) { const s = stepOf(p); m.set(s.step, (m.get(s.step) ?? true) && s.sharp) }
+  return [...m.entries()].map(([step, sharpOnly]) => ({ step, sharpOnly }))
+})
 const selectedNote = computed(() => slots.value[selected.value])
 const ariaLabel = computed(() => slots.value.map((n) => (n.m === null ? 'rest' : noteName(n.m))).join(', ') || 'empty staff')
 
@@ -113,9 +135,9 @@ watch(() => slots.value.length, async (len, old) => {
   if (len > (old ?? 0)) { await nextTick(); scroller.value?.scrollTo({ left: scroller.value.scrollWidth, behavior: 'smooth' }) }
 })
 
-function y(step: number) { return TOP + (MAX_STEP - step) * HALF }
+function y(step: number) { return TOP.value + (MAX_STEP - step) * HALF }
 function colX(i: number) { return LEFT + COL * i + COL / 2 }
-function stepFromY(py: number) { return Math.round(MAX_STEP - (py - TOP) / HALF) }
+function stepFromY(py: number) { return Math.round(MAX_STEP - (py - TOP.value) / HALF) }
 function stemUp(m: number) { return stepOf(m).step < 6 }
 function displayBeats(n: Note) { return props.plainRhythm ? 1 : n.b }
 
@@ -199,6 +221,9 @@ function onTap(e: PointerEvent) {
 .mark_close { fill: var(--accent); }
 .mark_miss { fill: var(--bad); }
 .mark_arrow { fill: #1b1530; font-size: 12px; font-weight: 800; text-anchor: middle; }
+.staff_possible rect { fill: var(--good); opacity: 0.35; }
+.staff_possible rect.staff_possible_sharp { fill: none; stroke: var(--good); stroke-width: 1.5; stroke-dasharray: 3 2; opacity: 0.8; }
+.staff_contour text { fill: #6b5bb5; font-size: 17px; font-weight: 800; text-anchor: middle; }
 .staff_name {
   position: absolute; top: 8px; right: 10px; padding: 2px 8px; border-radius: 999px;
   background: var(--ink); color: var(--paper); font-size: 0.8rem; font-weight: 700; pointer-events: none;

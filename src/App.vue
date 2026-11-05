@@ -13,7 +13,7 @@
     <SignIn v-else-if="!me" :config="config!" @signed-in="onSignedIn" />
     <template v-else-if="rules">
       <GameView v-if="route.gameId" :game-id="route.gameId" :rules="rules" :refresh="refresh" @back="go('')" @rematch="rematch" />
-      <LobbyView v-else :refresh="refresh" @open="(id) => go('game/' + id)" />
+      <LobbyView v-else :refresh="refresh" :me="me" @open="(id) => go('game/' + id)" @learner="setLearner" />
     </template>
   </main>
 
@@ -62,6 +62,7 @@ async function signedInSetup() {
   startPolling()
   if ('Notification' in window && Notification.permission === 'default') void Notification.requestPermission().catch(() => {})
 }
+async function setLearner(on: boolean) { try { me.value = await api.setLearner(on) } catch { /* offline: unchanged */ } }
 async function signOut() { await api.logout(); me.value = null; stopPolling(); go('') }
 async function rematch(opponentId: string) { const g = await api.start(opponentId); go('game/' + g.id) }
 
