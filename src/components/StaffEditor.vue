@@ -18,7 +18,15 @@
         </g>
         <!-- learner: the melody's shape -->
         <g v-if="contour" class="staff_contour">
-          <text v-for="(c, i) in contour" v-show="c" :key="'c' + i" :x="colX(i) - COL / 2" y="20">{{ c === 'up' ? '↗' : c === 'down' ? '↘' : '→' }}</text>
+          <text v-for="(c, i) in contour" v-show="c" :key="'c' + i" :x="colX(i) - COL / 2" :y="NAME_ROW + 19">{{ c === 'up' ? '↗' : c === 'down' ? '↘' : '→' }}</text>
+        </g>
+        <!-- every note's name above the staff, for learning the notes -->
+        <g class="staff_names">
+          <text v-for="(n, i) in slots" :key="'n' + i" :x="colX(i)" :y="NAME_ROW"
+            :class="{ staff_names_sel: editable && i === selected, staff_names_locked: mode === 'guess' && locked[i] != null, staff_names_dim: n.m === null }">
+            <template v-if="n.m !== null">{{ letterOf(n.m) }}<tspan class="staff_names_oct" dy="2">{{ octaveOf(n.m) }}</tspan></template>
+            <template v-else>{{ mode === 'guess' ? '?' : 'rest' }}</template>
+          </text>
         </g>
 
         <g v-for="(n, i) in slots" :key="i">
@@ -64,9 +72,6 @@
           <text :x="colX(slots.length)" :y="y(6) + 6">+</text>
         </g>
       </svg>
-    </div>
-    <div v-if="editable && selectedNote && selectedNote.m !== null" class="staff_name">
-      {{ noteName(selectedNote.m) }}
     </div>
   </div>
 </template>
@@ -117,8 +122,11 @@ const editable = computed(() => props.mode !== 'view')
 const soundingCount = computed(() => slots.value.filter((n) => n.m !== null).length)
 const canAppend = computed(() => props.mode === 'compose' && soundingCount.value < props.maxNotes)
 const width = computed(() => LEFT + COL * (slots.value.length + (canAppend.value ? 1 : 0)) + 12)
-// room for the shape arrows above the staff in learner mode
-const TOP = computed(() => (props.contour ? 30 : 10))
+// above the staff: a row of note names, and in learner mode a row of shape arrows under it
+const NAME_ROW = 18
+const TOP = computed(() => (props.contour ? 44 : 26))
+function letterOf(m: number) { return noteName(m).replace(/-?\d+$/, '') }
+function octaveOf(m: number) { return String(Math.floor(m / 12) - 1) }
 const height = computed(() => TOP.value + (MAX_STEP - MIN_STEP) * HALF + 34)
 /** the staff positions (steps) the selected note could be at, and whether only as a sharp */
 const possibleSteps = computed(() => {
@@ -127,7 +135,6 @@ const possibleSteps = computed(() => {
   for (const p of props.possible) { const s = stepOf(p); m.set(s.step, (m.get(s.step) ?? true) && s.sharp) }
   return [...m.entries()].map(([step, sharpOnly]) => ({ step, sharpOnly }))
 })
-const selectedNote = computed(() => slots.value[selected.value])
 const ariaLabel = computed(() => slots.value.map((n) => (n.m === null ? 'rest' : noteName(n.m))).join(', ') || 'empty staff')
 
 const scroller = ref<HTMLElement | null>(null)
@@ -223,9 +230,10 @@ function onTap(e: PointerEvent) {
 .mark_arrow { fill: #1b1530; font-size: 12px; font-weight: 800; text-anchor: middle; }
 .staff_possible rect { fill: var(--good); opacity: 0.35; }
 .staff_possible rect.staff_possible_sharp { fill: none; stroke: var(--good); stroke-width: 1.5; stroke-dasharray: 3 2; opacity: 0.8; }
+.staff_names text { fill: var(--ink); font-size: 15px; font-weight: 800; text-anchor: middle; }
+.staff_names .staff_names_oct { font-size: 10px; font-weight: 600; fill: var(--ink-soft); }
+.staff_names .staff_names_sel { fill: #c2410c; }
+.staff_names .staff_names_locked { fill: #15803d; }
+.staff_names .staff_names_dim { fill: var(--ink-soft); font-size: 11px; font-weight: 600; }
 .staff_contour text { fill: #6b5bb5; font-size: 17px; font-weight: 800; text-anchor: middle; }
-.staff_name {
-  position: absolute; top: 8px; right: 10px; padding: 2px 8px; border-radius: 999px;
-  background: var(--ink); color: var(--paper); font-size: 0.8rem; font-weight: 700; pointer-events: none;
-}
 </style>

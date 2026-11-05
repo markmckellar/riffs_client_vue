@@ -76,7 +76,8 @@ const complete = computed(() => missing.value === 0)
 const editable = computed(() => selected.value >= 0 && props.round.revealed[selected.value] == null && slots.value[selected.value]?.m != null)
 
 // start each guess from what's known, plus the last guess's notes to edit
-watch(() => [props.round.guesses.length, props.round.revealed.join()], () => {
+// (a string key: a new array each time would count as a change on every reload and wipe the notes being entered)
+watch(() => `${props.round.number}|${props.round.guesses.length}|${props.round.revealed.join()}`, () => {
   slots.value = props.round.revealed.map((r, i) => ({ m: r ?? lastGuess.value?.notes[i] ?? null, b: 1 }))
 }, { immediate: true })
 
