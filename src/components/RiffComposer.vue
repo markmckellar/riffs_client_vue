@@ -10,9 +10,9 @@
           <dt>𝄽</dt><dd><b>Rest</b>: a silence (up to {{ rules.maxRests }} per riff).</dd>
         </dl>
         <p class="muted">A beat is one tap of your foot.</p>
-        <p><b>To change a note:</b> tap it. An <b>Editing</b> bar shows which note you're changing. Tap the staff above
-          it to move it, or use ▲ ▼ (half steps, which give sharps ♯), its length, <b>Make it a rest</b> / <b>Make it a
-          note</b>, or 🗑 Delete. Tap <b>✓ Done</b> to go back to adding.</p>
+        <p><b>To change a note:</b> tap it. An <b>Edit</b> box shows which note you're changing. Tap the staff above
+          it to move it, or use ▲ ▼ (half steps, which give sharps ♯). The row below picks its length, turns it into a
+          <b>rest</b> (or a rest back into a <b>note</b>), or 🗑 <b>deletes</b> it. <b>✓ Done</b> goes back to adding.</p>
         <h3>Other buttons</h3>
         <dl>
           <dt>🗑 Clear</dt><dd>Start over. You get a few seconds to undo it.</dd>
@@ -59,28 +59,31 @@
 
     <div v-else class="notebox editbar" role="toolbar" aria-label="Edit the selected note">
       <div class="editbar_head">
-        <strong>Editing #{{ selected + 1 }}: {{ selNote ? noteName(selNote.m!) : 'rest' }}</strong>
-        <span class="muted">· {{ lengthOf(notes[selected].b).label.toLowerCase() }}</span>
+        <strong class="editbar_title">Edit #{{ selected + 1 }}: {{ selNote ? noteName(selNote.m!) : 'rest' }}</strong>
+        <template v-if="selNote">
+          <button type="button" class="tool tool_small" title="Up a half step" aria-label="Up a half step" @click="nudge(1)">▲</button>
+          <button type="button" class="tool tool_small" title="Down a half step" aria-label="Down a half step" @click="nudge(-1)">▼</button>
+        </template>
+        <span class="editbar_gap"></span>
         <button type="button" class="btn btn_small btn_primary" @click="selected = -1">✓ Done</button>
       </div>
-      <div class="editbar_row">
-        <template v-if="selNote">
-          <button type="button" class="tool" title="Up a half step" @click="nudge(1)">▲</button>
-          <button type="button" class="tool" title="Down a half step" @click="nudge(-1)">▼</button>
-        </template>
-        <div class="seg" role="radiogroup" aria-label="Its length">
-          <button v-for="l in LENGTHS" :key="l.beats" type="button" role="radio" :aria-checked="notes[selected].b === l.beats"
-            :title="l.label" :class="['seg_btn', { seg_on: notes[selected].b === l.beats }]" @click="setSelectedLength(l.beats)">
-            <span class="seg_label">{{ l.frac }}</span><NoteGlyph :beats="l.beats" />
-          </button>
-        </div>
+      <!-- one row: its length, or make it a rest (a note, if it's a rest), or delete it -->
+      <div class="seg notebox_lengths" role="group" aria-label="Change it">
+        <button v-for="l in LENGTHS" :key="l.beats" type="button" :aria-pressed="notes[selected].b === l.beats"
+          :title="l.label + ': ' + l.long" :class="['seg_btn', { seg_on: notes[selected].b === l.beats }]" @click="setSelectedLength(l.beats)">
+          <span class="seg_label">{{ l.frac }}</span><NoteGlyph :beats="l.beats" />
+        </button>
+        <button v-if="selNote" type="button" title="Make it a rest (a silence)" :disabled="rests >= rules.maxRests" class="seg_btn seg_rest" @click="toRest">
+          <span class="seg_label">rest</span>𝄽
+        </button>
+        <button v-else type="button" title="Make it a note" :disabled="sounding >= rules.maxNotes" class="seg_btn seg_rest" @click="toNote">
+          <span class="seg_label">note</span>♩
+        </button>
+        <button type="button" title="Delete it" aria-label="Delete it" class="seg_btn seg_delete" @click="remove">
+          <span class="seg_label">delete</span>🗑
+        </button>
       </div>
-      <div class="editbar_row">
-        <button v-if="selNote" type="button" class="tool" :disabled="rests >= rules.maxRests" @click="toRest">𝄽 Make it a rest</button>
-        <button v-else type="button" class="tool" :disabled="sounding >= rules.maxNotes" @click="toNote">♩ Make it a note</button>
-        <button type="button" class="tool tool_danger" @click="remove">🗑 Delete</button>
-      </div>
-      <p class="caption">{{ selNote ? 'Tap the staff above it to move it, or use the buttons.' : 'A rest is a silence. Change its length, make it a note, or delete it.' }}</p>
+      <p class="caption">{{ selNote ? 'Tap the staff above it to move it.' : 'A rest is a silence.' }}</p>
     </div>
 
     <div class="row">
@@ -256,8 +259,10 @@ onBeforeUnmount(() => playback.value?.stop())
 .addhint .caption { flex: 1; width: auto; }
 .btn_undo { border-color: var(--accent); color: var(--accent); }
 .editbar_head { display: flex; align-items: center; gap: 6px; }
-.editbar_head .muted { flex: 1; color: var(--text-muted); font-size: 0.85rem; }
-.editbar_row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.editbar_gap { flex: 1; }
+.editbar_title, .editbar_head .btn { white-space: nowrap; }
+.tool_small { min-height: 34px; min-width: 38px; padding: 4px 8px; }
+.seg_delete { color: var(--bad); font-size: 1rem; }
 .tool_danger { color: var(--bad); }
 .composer_head h2 { margin: 0; font-size: 1.25rem; }
 .count { color: var(--bad); font-weight: 700; }
