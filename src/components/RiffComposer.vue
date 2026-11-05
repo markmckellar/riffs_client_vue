@@ -11,22 +11,20 @@
       :max-notes="rules.maxNotes" :max-rests="rules.maxRests" :lowest="rules.lowest" :highest="rules.highest"
       :new-length="1" plain-rhythm :instrument="instrument" @add="addAt" />
 
-    <!-- the same piano as when guessing: a key puts the note at the cursor and stays on it; ⏎ moves on -->
+    <!-- the same piano as when guessing: a key puts the note at the cursor and moves on, like typing -->
     <PianoKeys :lowest="rules.lowest" :highest="rules.highest" :current="selNote ? selNote.m : null" :instrument="instrument" @press="onPiano" />
 
     <div class="toolbar">
       <div class="tools">
         <button type="button" class="tool tool_key" title="Backspace: delete this note (or the last one)" aria-label="Backspace" :disabled="!notes.length" @click="backspace">⌫</button>
-        <button type="button" class="tool tool_key" title="Enter: next note" aria-label="Enter: next note" @click="enter">⏎</button>
         <button type="button" class="tool" :title="selected >= 0 ? 'Space: make this a rest (or a note again)' : 'Space: add a rest'"
           :disabled="selected < 0 && rests >= rules.maxRests" @click="restKey">␣ rest</button>
         <button v-if="undoNotes" type="button" class="tool btn_undo" @click="undoClear">↶ Undo</button>
         <button v-else type="button" class="tool" :disabled="!notes.length" @click="clear">Clear</button>
         <MicRecorder :bpm="bpm" :lowest="rules.lowest" :highest="rules.highest" :max-notes="rules.maxNotes" @notes="fromMic" />
         <HelpSheet title="How to write a riff" storage-key="riffs_help_compose">
-          <p><b>To add:</b> tap a <b>piano key</b> (or the staff at <b>+</b>). The note goes in at the cursor and the
-            cursor stays on it, so you can try keys until it sounds right; <b>⏎</b> moves on to the next spot. Every note
-            is the same length.</p>
+          <p><b>To add:</b> tap a <b>piano key</b> (or the staff at <b>+</b>). The note goes in at the cursor, which then
+            moves on, like typing. Every note is the same length.</p>
           <p><b>To change a note:</b> tap it on the staff (its name turns orange), then a piano key. <b>⌫</b> deletes
             it (with nothing selected, the last note); <b>␣ rest</b> turns it into a rest, or a rest back into a note
             (with nothing selected, it adds a rest).</p>
@@ -107,19 +105,18 @@ function addAt(pitch: number) {
 }
 
 // ---- the keyboard: the cursor is the selected note, or the end of the riff (nothing selected)
-/** a piano key: changes the selected note, or adds one at the end; the cursor stays on it */
+/** a piano key: changes the selected note (then on to the next one), or adds one at the end, like typing */
 function onPiano(m: number) {
   const s = selected.value
   if (s >= 0 && s < notes.value.length) {
     if (notes.value[s].m === null && sounding.value >= props.rules.maxNotes) return    // a rest can't become a 9th note
     notes.value = notes.value.map((n, i) => (i === s ? { m, b: 1 } : n))
+    selected.value = s + 1 < notes.value.length ? s + 1 : -1    // past the last note = the end, where keys add notes
     return
   }
-  addAt(m)
-}
-/** ⏎: on to the next note, or past the end (where the next key adds a note) */
-function enter() {
-  selected.value = selected.value >= 0 && selected.value < notes.value.length - 1 ? selected.value + 1 : -1
+  if (sounding.value >= props.rules.maxNotes) return
+  notes.value = [...notes.value, { m, b: 1 }]
+  selected.value = -1    // stay at the end
 }
 /** ␣ rest: the selected note becomes a rest (or a rest a note); with nothing selected, a rest at the end */
 function restKey() {
