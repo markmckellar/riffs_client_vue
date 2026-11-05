@@ -258,14 +258,19 @@ onBeforeUnmount(() => playback.value?.stop())
 /* the length's name above its icon: ⅛ ¼ ⅜ ½ 1 */
 .seg .seg_btn { display: inline-flex; flex-direction: column; align-items: center; gap: 0; padding: 3px 8px 4px; line-height: 1; }
 .seg_label { font-size: 0.68rem; font-weight: 700; opacity: 0.85; margin-bottom: 1px; }
-.notebox { display: grid; gap: 8px; background: var(--surface-2); border: 1px solid var(--accent); border-radius: var(--radius); padding: 10px; margin-top: -6px; }
-.notebox_head { display: flex; align-items: center; gap: 8px; }
+.notebox { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; background: var(--surface-2); border: 1px solid var(--accent); border-radius: var(--radius); padding: 10px; margin-top: -6px; }
+.notebox_head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .notebox_x { background: none; border: 0; color: var(--text-muted); font-size: 1.1rem; min-width: 36px; min-height: 32px; cursor: pointer; }
-.notebox_lengths { justify-self: start; }
+/* the length / rest / delete row always fits the box: the buttons share its width (bigger text or a narrow
+   phone used to push "delete" off the right edge) */
+.notebox_lengths { display: flex; width: 100%; max-width: 420px; justify-self: start; }
+.notebox_lengths { min-width: 0; }
+.notebox_lengths .seg_btn { flex: 1 1 0; min-width: 0; padding-left: 2px; padding-right: 2px; overflow: hidden; }
+.notebox_lengths .seg_label { max-width: 100%; overflow: hidden; white-space: nowrap; }
 .addhint { display: flex; align-items: center; gap: 10px; }
 .addhint .caption { flex: 1; width: auto; }
 .btn_undo { border-color: var(--accent); color: var(--accent); }
-.editbar_head { display: flex; align-items: center; gap: 6px; }
+.editbar_head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .editbar_gap { flex: 1; }
 .editbar_title, .editbar_head .btn { white-space: nowrap; }
 .seg_delete { color: var(--bad); font-size: 1rem; }
