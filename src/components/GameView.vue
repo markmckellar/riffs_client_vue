@@ -15,17 +15,18 @@
       </div>
     </div>
 
-    <!-- what happened last round -->
+    <!-- one row: what happened last round, hear that riff, and the sound to play riffs with -->
     <div v-if="lastDone && game.turn !== 'over'" class="card reveal">
-      <div>
+      <div class="reveal_text">
         <strong>Round {{ lastDone.number }}:</strong>
         {{ revealText(lastDone) }}
         <span v-if="lastDone.tier" class="tier">{{ TIER_LABEL[lastDone.tier] }}</span>
       </div>
-      <button v-if="lastDone.riff" type="button" class="tool" @click="play(lastDone.riff, instrument, 100)">▶ Hear it</button>
+      <button v-if="lastDone.riff" type="button" class="tool reveal_hear" title="Hear that riff" @click="play(lastDone.riff, instrument, 100)">▶ Hear it</button>
+      <InstrumentPicker v-model="instrument" bare />
     </div>
-
-    <div class="sound_row"><InstrumentPicker v-model="instrument" /></div>
+    <!-- round 1 (nothing to report yet): just the sound picker -->
+    <div v-else class="sound_row"><InstrumentPicker v-model="instrument" /></div>
 
     <div class="card">
       <RiffComposer v-if="game.turn === 'compose'" :key="'c' + current.number" :game-id="game.id" :rules="rules"
@@ -159,7 +160,11 @@ function playMine() { if (current.value.riff) play(current.value.riff, instrumen
 .level_easy { color: var(--good); } .level_medium { color: var(--accent); } .level_hard { color: var(--bad); }
 .online { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--good); }
 .sound_row { display: flex; justify-content: flex-end; margin: -4px 2px -6px; }
-.reveal { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 0.9rem; }
+.reveal { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 0.85rem; padding: 10px 12px; }
+/* the message takes what's left; on a very narrow screen the buttons wrap under it rather than squash it */
+.reveal_text { flex: 1 1 150px; min-width: 0; }
+.reveal_hear { flex: none; padding: 6px 10px; min-height: 36px; white-space: nowrap; }
+.reveal :deep(.instrument) { margin-left: auto; }
 .tier { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 99px; background: var(--surface-2); font-size: 0.75rem; font-weight: 700; color: var(--accent); }
 .waiting, .over { text-align: center; padding: 16px 0; }
 .waiting_icon, .over_icon { font-size: 2.6rem; }
