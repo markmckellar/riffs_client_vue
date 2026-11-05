@@ -42,7 +42,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import type { Note, Player, Round, Rules } from '../ts/api'
 import { play, type Playback } from '../ts/synth'
 import StaffEditor from './StaffEditor.vue'
@@ -55,7 +55,8 @@ const emit = defineEmits<{ guess: [number[]]; hint: []; extraString: [] }>()
 const slots = ref<Note[]>([])
 const selected = ref(-1)
 const bpm = ref(90)
-const playback = ref<Playback | null>(null)
+// shallowRef: a plain ref would wrap the object in a proxy, and "playback.value === p" below would never match
+const playback = shallowRef<Playback | null>(null)
 const playingSlot = ref(-1)
 
 const lastGuess = computed(() => props.round.guesses[props.round.guesses.length - 1] ?? null)

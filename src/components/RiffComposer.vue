@@ -55,7 +55,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { api, type Evaluation, type Note, type Rules } from '../ts/api'
 import { LENGTHS, TIER_LABEL } from '../ts/music'
 import { play, type Playback } from '../ts/synth'
@@ -74,7 +74,8 @@ const selected = ref(-1)
 const newLength = ref(1)
 const bpm = ref(100)
 const playing = ref(-1)
-const playback = ref<Playback | null>(null)
+// shallowRef: a plain ref would wrap the object in a proxy, and "playback.value === p" below would never match
+const playback = shallowRef<Playback | null>(null)
 const showLibrary = ref(false)
 const evaluation = ref<Evaluation | null>(null)
 const sending = ref(false)
