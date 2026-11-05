@@ -18,12 +18,7 @@
           <dt>🗑 Clear</dt><dd>Start over. You get a few seconds to undo it.</dd>
           <dt>▶</dt><dd>Hear your riff. <b>Sound</b> picks the instrument.</dd>
           <dt>🎙</dt><dd><b>Play it in:</b> sing, whistle or play into the phone, one note at a time, and it writes the notes down.</dd>
-          <dt>📚</dt><dd><b>Famous tunes:</b> use a piece of a well-known tune (easier to guess, so half points).</dd>
         </dl>
-        <h3>The score</h3>
-        <p>How "musical" your riff sounds, from 0 to 100. Musical riffs earn points, plus Hints 💡 and Extra
-          Strings 🎸 for when you guess. Tips: end on a "home" note (often the note you started on), use mostly small
-          steps, and repeat a little pattern. A riff has {{ rules.minNotes }}–{{ rules.maxNotes }} notes.</p>
       </HelpSheet>
     </div>
 
@@ -46,22 +41,9 @@
     </div>
     <div class="row">
       <MicRecorder :bpm="bpm" :lowest="rules.lowest" :highest="rules.highest" :max-notes="rules.maxNotes" @notes="fromMic" />
-      <button type="button" class="btn btn_ghost" @click="showLibrary = !showLibrary">📚 Famous tunes</button>
     </div>
 
-    <LibraryPicker v-if="showLibrary" :instrument="instrument" @pick="fromLibrary" @close="showLibrary = false" />
 
-    <div v-if="evaluation && sounding >= 2" :class="['sense', 'sense_' + evaluation.tier]">
-      <div class="sense_top">
-        <strong>{{ TIER_LABEL[evaluation.tier] }}</strong>
-        <span class="sense_bar"><span :style="{ width: evaluation.score + '%' }"></span></span>
-        <span class="sense_score">{{ evaluation.score }}</span>
-      </div>
-      <div class="sense_reward">{{ rewardText }}</div>
-      <ul class="sense_reasons">
-        <li v-for="r in topReasons" :key="r.rule" :class="r.points > 0 ? 'good' : 'bad'">{{ r.text }}</li>
-      </ul>
-    </div>
 
     <p v-if="problem && sounding" class="problem">{{ problem }}</p>
     <button type="button" class="btn btn_primary btn_big" :disabled="!!problem || sending" @click="send">
@@ -73,11 +55,10 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { api, type Evaluation, type Note, type Rules } from '../ts/api'
-import { TIER_LABEL, noteName } from '../ts/music'
+import { noteName } from '../ts/music'
 import { play, type Playback } from '../ts/synth'
 import StaffEditor from './StaffEditor.vue'
 import MicRecorder from './MicRecorder.vue'
-import LibraryPicker from './LibraryPicker.vue'
 import HelpSheet from './HelpSheet.vue'
 import InstrumentPicker from './InstrumentPicker.vue'
 import PianoKeys from './PianoKeys.vue'
@@ -93,7 +74,6 @@ const bpm = ref(100)    // one steady speed (no tempo slider)
 const playing = ref(-1)
 // shallowRef: a plain ref would wrap the object in a proxy, and "playback.value === p" below would never match
 const playback = shallowRef<Playback | null>(null)
-const showLibrary = ref(false)
 const evaluation = ref<Evaluation | null>(null)
 const sending = ref(false)
 
@@ -104,17 +84,6 @@ const selNote = computed(() => { const n = notes.value[selected.value]; return n
 const problem = computed(() => {
   if (sounding.value < props.rules.minNotes) return `Add ${props.rules.minNotes - sounding.value} more note${props.rules.minNotes - sounding.value === 1 ? '' : 's'}.`
   return evaluation.value?.problem ?? null
-})
-const topReasons = computed(() => (evaluation.value?.reasons ?? []).filter((r) => r.points !== 0)
-  .sort((a, b) => Math.abs(b.points) - Math.abs(a.points)).slice(0, 4))
-const rewardText = computed(() => {
-  const t = evaluation.value?.tier
-  if (tuneId.value) return 'From the tune library: half points, no tokens.'
-  const n = sounding.value
-  const token = (t === 'catchy' && n >= 6) ? ' + an Extra String 🎸' : ((t === 'catchy' || t === 'musical') && n >= 5) ? ' + a Hint 💡' : ''
-  const more = (t === 'catchy' && n < 6) ? ` (${n < 5 ? 'a Hint at 5 notes, ' : ''}an Extra String at 6+ notes)` : (t === 'musical' && n < 5) ? ' (a Hint at 5+ notes)' : ''
-  return t === 'catchy' ? `Reward: 50 points${token}${more}` : t === 'musical' ? `Reward: 25 points${token}${more}`
-    : t === 'ok' ? 'Reward: 10 points' : 'No reward. Try ending on the home note, or using smaller steps.'
 })
 
 function loadDraft(): Note[] {
@@ -199,10 +168,8 @@ function togglePlay() {
   void p.done.then(() => { if (playback.value === p) playback.value = null })
 }
 function fromMic(n: Note[]) { notes.value = n.map((x) => ({ ...x, b: 1 })); tuneId.value = undefined; selected.value = -1 }
-function fromLibrary(n: Note[], id: string) { notes.value = n.map((x) => ({ ...x, b: 1 })); tuneId.value = id; showLibrary.value = false; selected.value = -1 }
 
 async function send() {
-  if (evaluation.value?.tier === 'noise' && !confirm('This riff scores as "Noise?", so you get no reward. Send it anyway?')) return
   sending.value = true
   emit('send', notes.value, tuneId.value)
   try { localStorage.removeItem(draftKey) } catch { /* storage blocked */ }
@@ -225,18 +192,5 @@ onBeforeUnmount(() => playback.value?.stop())
 .toolbar { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; }
 .tools { display: flex; gap: 6px; flex-wrap: wrap; }
 .row { display: flex; gap: 8px; flex-wrap: wrap; }
-.sense { background: var(--surface-2); border-radius: var(--radius); padding: 10px 12px; border-left: 4px solid var(--text-muted); }
-.sense_catchy { border-left-color: var(--accent); }
-.sense_musical { border-left-color: var(--accent-2); }
-.sense_ok { border-left-color: var(--good); }
-.sense_noise { border-left-color: var(--bad); }
-.sense_top { display: flex; align-items: center; gap: 10px; }
-.sense_bar { flex: 1; height: 8px; background: var(--border); border-radius: 99px; overflow: hidden; }
-.sense_bar span { display: block; height: 100%; background: linear-gradient(90deg, var(--bad), var(--accent), var(--good)); transition: width 0.3s; }
-.sense_score { font-variant-numeric: tabular-nums; color: var(--text-muted); }
-.sense_reward { font-size: 0.85rem; margin-top: 4px; }
-.sense_reasons { margin: 6px 0 0; padding-left: 18px; font-size: 0.85rem; }
-.sense_reasons .good { color: var(--text); }
-.sense_reasons .bad { color: var(--bad); }
 .problem { margin: 0; color: var(--bad); font-size: 0.9rem; }
 </style>
