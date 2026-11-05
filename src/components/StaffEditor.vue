@@ -146,17 +146,13 @@ const MIN_STEP = -4 // a step below G3
 const slots = computed(() => props.modelValue)
 const editable = computed(() => props.mode !== 'view')
 const soundingCount = computed(() => slots.value.filter((n) => n.m !== null).length)
-const restCount = computed(() => slots.value.length - soundingCount.value)
-const canAppend = computed(() => props.mode === 'compose'
-  && (soundingCount.value < props.maxNotes || restCount.value < props.maxRests))
+// the + column only while another note can be added (a rest at the very end would mean nothing)
+const canAppend = computed(() => props.mode === 'compose' && soundingCount.value < props.maxNotes)
 /**
- * The staff is scaled to the screen width (never scrolls) and always has room for the biggest riff, so every staff
- * looks the same however many notes it holds. Writing: 8 notes, 2 rests and the + column. Guessing / viewing: 8 notes
- * (more columns only if a riff with rests needs them).
+ * The staff is scaled to the screen width (never scrolls) with room for 8 notes, the most a riff can have, so
+ * writing and guessing look the same. Writing adds the + column while another note fits; rests widen it a little.
  */
-const columns = computed(() => (props.mode === 'compose'
-  ? props.maxNotes + props.maxRests + 1
-  : Math.max(slots.value.length, props.maxNotes)))
+const columns = computed(() => Math.max(props.maxNotes, slots.value.length + (canAppend.value ? 1 : 0)))
 const width = computed(() => LEFT + COL * columns.value + 12)
 // above the staff: a row of note names, and in learner mode a row of shape arrows under it
 const NAME_ROW = 18
