@@ -6,7 +6,7 @@ export const SERVER: string = import.meta.env.VITE_RIFFS_SERVER ?? '/'
 export interface Note { m: number | null; b: number }
 
 export interface Me { id: string; name: string; email?: string; wins: number; losses: number; points: number }
-export interface AuthConfig { game: string; googleClientId: string; devLogin: boolean; me: Me | null }
+export interface AuthConfig { game: string; googleClientId: string; devLogin: boolean; guestLogin: boolean; me: Me | null }
 
 export interface Player {
   id: string; name: string; bot: boolean; level?: BotLevel; online: boolean
@@ -58,6 +58,7 @@ export const api = {
   config: () => call<AuthConfig>('GET', 'api/auth/config'),
   google: (credential: string) => call<Me>('POST', 'api/auth/google', { credential }),
   devLogin: (name: string) => call<Me>('POST', 'api/auth/dev', { name }),
+  guestLogin: (name: string) => call<Me>('POST', 'api/auth/guest', { name }),
   logout: () => call<unknown>('POST', 'api/auth/logout'),
   rules: () => call<Rules>('GET', 'api/riffs/rules'),
   players: () => call<Lobbyist[]>('GET', 'api/players'),

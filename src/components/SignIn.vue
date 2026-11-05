@@ -4,11 +4,12 @@
     <h2>Welcome to {{ config.game }}</h2>
     <p class="muted">Write a short riff, send it to a friend, and see if they can write it back down by ear. Then it's your turn to listen.</p>
     <div v-show="config.googleClientId" ref="googleButton" class="signin_google"></div>
-    <form v-if="config.devLogin" class="signin_dev" @submit.prevent="dev">
-      <label>Test sign-in (no Google): <input v-model="name" maxlength="30" placeholder="Your name" autocomplete="nickname" /></label>
+    <form v-if="config.devLogin || config.guestLogin" class="signin_dev" @submit.prevent="dev">
+      <label>{{ config.devLogin ? 'Test sign-in (no Google):' : (config.googleClientId ? 'Or play as a guest:' : 'Play as a guest. Pick a name:') }}
+        <input v-model="name" maxlength="30" placeholder="Your name" autocomplete="nickname" /></label>
       <button type="submit" class="btn btn_primary" :disabled="!name.trim()">Play</button>
     </form>
-    <p v-if="!config.googleClientId && !config.devLogin" class="error">Sign-in isn't set up on this server yet.</p>
+    <p v-if="!config.googleClientId && !config.devLogin && !config.guestLogin" class="error">Sign-in isn't set up on this server yet.</p>
     <p v-if="error" class="error">{{ error }}</p>
   </div>
 </template>
@@ -31,7 +32,8 @@ const error = ref('')
 const googleButton = ref<HTMLElement | null>(null)
 
 async function dev() {
-  try { emit('signedIn', await api.devLogin(name.value.trim())) } catch (e) { error.value = (e as Error).message }
+  const n = name.value.trim()
+  try { emit('signedIn', await (props.config.devLogin ? api.devLogin(n) : api.guestLogin(n))) } catch (e) { error.value = (e as Error).message }
 }
 
 onMounted(() => {
