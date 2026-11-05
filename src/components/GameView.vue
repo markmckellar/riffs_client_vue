@@ -32,7 +32,7 @@
 
       <div v-else-if="game.turn === 'wait_guess'" class="watching">
         <h2>{{ game.opponent.name }} is guessing your riff</h2>
-        <StaffEditor :model-value="current.riff ?? []" mode="view" :highlight="playing" />
+        <StaffEditor :model-value="current.riff ?? []" mode="view" plain-rhythm :highlight="playing" />
         <div class="row">
           <button type="button" class="btn" @click="playMine">▶ Play my riff</button>
           <InstrumentPicker bare />

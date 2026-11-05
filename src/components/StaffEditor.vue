@@ -32,8 +32,7 @@
         <g v-for="(n, i) in slots" :key="i">
           <!-- empty guess slot -->
           <g v-if="n.m === null && mode === 'guess'">
-            <circle :cx="colX(i)" :cy="y(6)" r="9" class="staff_empty" />
-            <text :x="colX(i)" :y="y(6) + 4" class="staff_empty_q">?</text>
+            <text :x="colX(i)" :y="y(6) + 9" class="staff_empty_q">?</text>
           </g>
           <!-- rest -->
           <g v-else-if="n.m === null" class="staff_rest">
@@ -128,8 +127,9 @@ const selected = defineModel<number>('selected', { default: -1 })
 const COL = 42
 const LEFT = 52
 const HALF = 8 // half a space: one diatonic step
-const MAX_STEP = 16 // E6, room above C6
-const MIN_STEP = -5 // F3, room below G3
+// just room for the game's notes, G3 (step -3) to C6 (step 14), with their ledger lines: no stems any more
+const MAX_STEP = 15 // a step above C6
+const MIN_STEP = -4 // a step below G3
 
 const slots = computed(() => props.modelValue)
 const editable = computed(() => props.mode !== 'view')
@@ -143,7 +143,9 @@ const NAME_ROW = 18
 const TOP = computed(() => (props.contour ? 44 : 26))
 function letterOf(m: number) { return noteName(m).replace(/-?\d+$/, '') }
 function octaveOf(m: number) { return String(Math.floor(m / 12) - 1) }
-const height = computed(() => TOP.value + (MAX_STEP - MIN_STEP) * HALF + 34)
+// under the staff: the row of feedback dots when guessing, otherwise just a little margin
+const BOTTOM = computed(() => (props.mode === 'guess' ? 30 : 12))
+const height = computed(() => TOP.value + (MAX_STEP - MIN_STEP) * HALF + BOTTOM.value)
 /** the staff positions (steps) the selected note could be at, and whether only as a sharp */
 const possibleSteps = computed(() => {
   if (!props.possible || selected.value < 0) return []
@@ -247,8 +249,7 @@ function onTap(e: PointerEvent) {
 .staff_note_locked .staff_head { fill: var(--good); }
 .staff_note_locked .staff_head_open { stroke: var(--good); }
 .staff_note_locked .staff_stem, .staff_note_locked .staff_flag { stroke: var(--good); }
-.staff_empty { fill: none; stroke: var(--ink-soft); stroke-dasharray: 3 3; stroke-width: 1.5; }
-.staff_empty_q { fill: var(--ink-soft); font-size: 12px; text-anchor: middle; }
+.staff_empty_q { fill: var(--ink-soft); opacity: 0.55; font-size: 26px; font-weight: 800; text-anchor: middle; }
 .staff_playing { fill: var(--accent); opacity: 0.25; }
 .staff_selected { fill: var(--accent-2); opacity: 0.14; }
 .staff_add rect { fill: none; stroke: var(--ink-soft); stroke-dasharray: 4 4; opacity: 0.6; }
