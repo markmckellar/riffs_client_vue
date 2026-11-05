@@ -2,9 +2,36 @@
   <section class="composer">
     <header class="composer_head">
       <h2>Write a riff</h2>
+      <HelpSheet title="How to write a riff" storage-key="riffs_help_compose">
+        <p><b>Tap the staff</b> to place a note. Higher on the staff = a higher note. Its name (C, D, E…) shows above
+          the staff.</p>
+        <p><b>To change a note:</b> tap it once to select it (its name turns orange), then tap again where it should go,
+          or use the buttons below on it.</p>
+        <h3>Note lengths</h3>
+        <dl>
+          <template v-for="l in LENGTHS" :key="l.beats"><dt><NoteGlyph :beats="l.beats" /></dt><dd><b>{{ l.label }}</b>: {{ l.long }}</dd></template>
+        </dl>
+        <p class="muted">A beat is one tap of your foot. Pick a length, then tap the staff. To change a note's length,
+          tap the note, then a length.</p>
+        <h3>Buttons</h3>
+        <dl>
+          <dt>▲ ▼</dt><dd>Move the selected note up or down a half step. That's how you get sharps (♯), the black piano keys.</dd>
+          <dt>𝄽 rest</dt><dd>A silence. Turns the selected note into a rest, or adds one at the end if nothing is selected.
+            Up to {{ rules.maxRests }} per riff. To make a rest a note again, select it and tap the staff.</dd>
+          <dt>⌫</dt><dd>Delete the selected note.</dd>
+          <dt>Clear</dt><dd>Start over.</dd>
+          <dt>▶</dt><dd>Hear your riff. Tempo sets how fast.</dd>
+          <dt>🎙</dt><dd><b>Play it in:</b> sing, whistle or play into the phone, one note at a time, and it writes the notes down.</dd>
+          <dt>📚</dt><dd><b>Famous tunes:</b> use a piece of a well-known tune (easier to guess, so half points).</dd>
+        </dl>
+        <h3>The score</h3>
+        <p>How "musical" your riff sounds, from 0 to 100. Musical riffs earn points, plus Hints 💡 and Extra
+          Strings 🎸 for when you guess. Tips: end on a "home" note (often the note you started on), use mostly small
+          steps, and repeat a little pattern. A riff has {{ rules.minNotes }}–{{ rules.maxNotes }} notes.</p>
+      </HelpSheet>
       <span :class="['count', { count_ok: countOk }]">{{ sounding }} notes <small>({{ rules.minNotes }}–{{ rules.maxNotes }})</small></span>
     </header>
-    <p class="hint">Tap the staff to place notes. Tap a note to move it. {{ opponentName }} will hear it and try to write it down.</p>
+    <p class="hint">Tap the staff to place notes. Tap a note to select it, tap again to move it. {{ opponentName }} will hear it and try to write it down.</p>
 
     <StaffEditor v-model="notes" v-model:selected="selected" mode="compose" :highlight="playing"
       :max-notes="rules.maxNotes" :max-rests="rules.maxRests" :lowest="rules.lowest" :highest="rules.highest"
@@ -17,10 +44,11 @@
           <NoteGlyph :beats="l.beats" />
         </button>
       </div>
+      <div class="length_caption" aria-live="polite"><NoteGlyph :beats="newLength" /> {{ lengthInfo.label }} · {{ lengthInfo.long }}</div>
       <div class="tools">
         <button type="button" class="tool" title="Up a half step" :disabled="!selNote" @click="nudge(1)">▲</button>
         <button type="button" class="tool" title="Down a half step" :disabled="!selNote" @click="nudge(-1)">▼</button>
-        <button type="button" class="tool" title="Add a rest" :disabled="rests >= rules.maxRests" @click="addRest">𝄽 rest</button>
+        <button type="button" class="tool" :title="selNote ? 'Make the selected note a rest' : 'Add a rest at the end'" :disabled="rests >= rules.maxRests" @click="addRest">𝄽 rest</button>
         <button type="button" class="tool" title="Delete the selected note" :disabled="selected < 0" @click="remove">⌫</button>
         <button type="button" class="tool" title="Start over" :disabled="!notes.length" @click="clear">Clear</button>
       </div>
@@ -63,6 +91,7 @@ import StaffEditor from './StaffEditor.vue'
 import NoteGlyph from './NoteGlyph.vue'
 import MicRecorder from './MicRecorder.vue'
 import LibraryPicker from './LibraryPicker.vue'
+import HelpSheet from './HelpSheet.vue'
 
 const props = defineProps<{ gameId: string; rules: Rules; instrument: string; opponentName: string }>()
 const emit = defineEmits<{ send: [notes: Note[], tuneId: string | undefined] }>()
@@ -81,6 +110,7 @@ const evaluation = ref<Evaluation | null>(null)
 const sending = ref(false)
 
 const sounding = computed(() => notes.value.filter((n) => n.m !== null).length)
+const lengthInfo = computed(() => LENGTHS.find((l) => l.beats === newLength.value) ?? LENGTHS[1])
 const rests = computed(() => notes.value.length - sounding.value)
 const countOk = computed(() => sounding.value >= props.rules.minNotes && sounding.value <= props.rules.maxNotes)
 const selNote = computed(() => { const n = notes.value[selected.value]; return n && n.m !== null ? n : null })
@@ -124,7 +154,12 @@ function nudge(d: number) {
   notes.value = notes.value.map((x, i) => (i === selected.value && x.m !== null
     ? { ...x, m: Math.min(props.rules.highest, Math.max(props.rules.lowest, x.m + d)) } : x))
 }
+/** The selected note becomes a rest (same length); with nothing selected, a rest is added at the end. */
 function addRest() {
+  if (selNote.value) {
+    notes.value = notes.value.map((x, i) => (i === selected.value ? { m: null, b: x.b } : x))
+    return
+  }
   notes.value = [...notes.value, { m: null, b: newLength.value }]
   selected.value = notes.value.length - 1
 }
@@ -155,7 +190,11 @@ onBeforeUnmount(() => playback.value?.stop())
 
 <style scoped>
 .composer { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); }
-.composer_head { display: flex; align-items: baseline; justify-content: space-between; }
+.composer_head { display: flex; align-items: center; gap: 10px; }
+.composer_head h2 { flex: 1; }
+.length_caption { width: 100%; order: 2; display: flex; align-items: center; gap: 4px; font-size: 0.8rem; color: var(--text-muted); margin-top: -4px; }
+.length_caption :deep(svg) { width: 14px; height: 18px; }
+.tools { order: 1; }
 .composer_head h2 { margin: 0; font-size: 1.25rem; }
 .count { color: var(--bad); font-weight: 700; }
 .count_ok { color: var(--good); }

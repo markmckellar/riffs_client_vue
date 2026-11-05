@@ -3,6 +3,41 @@
     <header class="guesser_head">
       <h2>Guess the riff</h2>
       <span class="muted">{{ round.length }} notes · first note given</span>
+      <HelpSheet title="How to guess a riff" storage-key="riffs_help_guess">
+        <p>Listen to the riff, then write it down on the staff. The <b>first note is given</b> (green), so you can
+          work out the rest from it: is the next one higher or lower, a small step or a jump?</p>
+        <h3>Buttons</h3>
+        <dl>
+          <dt>▶</dt><dd><b>Play the riff</b> as often as you like. Slide Tempo left to slow it down.</dd>
+          <dt>?</dt><dd>An empty slot. Tap the staff above it to put a note there. Tap a filled note once to select it,
+            again to move it.</dd>
+          <dt>▲♯ ▼♭</dt><dd>Move the selected note up or down a half step (sharps and flats).</dd>
+          <dt>▶ My</dt><dd>Play your guess with the riff's rhythm, to compare by ear.</dd>
+          <dt>Guess!</dt><dd>Check it. Every note gets a coloured dot.</dd>
+        </dl>
+        <h3>The dots</h3>
+        <dl>
+          <dt><i class="dot mark_exact"></i></dt><dd><b>Right.</b> It stays filled in.</dd>
+          <dt><i class="dot mark_octave"></i></dt><dd>Right note name, wrong octave: try 8 notes higher or lower.</dd>
+          <dt><i class="dot mark_close"></i></dt><dd><b>Close</b> (1–2 half steps off). The arrow says go higher ↑ or lower ↓.</dd>
+          <dt><i class="dot mark_miss"></i></dt><dd>Miss.</dd>
+        </dl>
+        <h3>Strings and Encores</h3>
+        <p>Each wrong guess snaps a guitar string. Run out of strings and you lose an Encore 🎤; lose all your Encores and the
+          game is over. Either way, after the riff it's your turn to write one.</p>
+        <dl>
+          <dt>💡</dt><dd><b>Hint:</b> fills in one note.</dd>
+          <dt>🎸</dt><dd><b>+String:</b> one more guess this round.</dd>
+        </dl>
+        <p class="muted">You earn Hints and Strings by writing musical riffs.</p>
+        <h3>🎓 Learner mode</h3>
+        <dl>
+          <dt>↗ ↘ →</dt><dd>The melody's shape: up, down or the same from one note to the next.</dd>
+          <dt>👂</dt><dd>Select a note slot and hear just that note of the riff.</dd>
+          <dt><i class="bar"></i></dt><dd>Green bars: where the selected note can still be. Dashed = only as a sharp.</dd>
+          <dt>🎁</dt><dd>A free note after every 2 wrong guesses. Guessed riffs earn half points.</dd>
+        </dl>
+      </HelpSheet>
     </header>
     <label class="learner_switch">
       <input type="checkbox" :checked="me.learner" :disabled="busy" @change="emit('learner', !me.learner)" />
@@ -58,6 +93,7 @@ import { play, type Playback } from '../ts/synth'
 import StaffEditor from './StaffEditor.vue'
 import GuitarStrings from './GuitarStrings.vue'
 import GuessHistory from './GuessHistory.vue'
+import HelpSheet from './HelpSheet.vue'
 
 const props = defineProps<{ round: Round; rules: Rules; instrument: string; me: Player; busy: boolean }>()
 const emit = defineEmits<{ guess: [number[]]; hint: []; extraString: []; learner: [boolean] }>()
@@ -167,7 +203,9 @@ onBeforeUnmount(() => playback.value?.stop())
 
 <style scoped>
 .guesser { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); }
-.guesser_head { display: flex; justify-content: space-between; align-items: baseline; }
+.guesser_head { display: flex; align-items: center; gap: 10px; }
+.guesser_head h2 { flex: 1; }
+.bar { display: inline-block; width: 26px; height: 8px; border-radius: 4px; background: var(--good); opacity: 0.5; }
 .guesser_head h2 { margin: 0; font-size: 1.25rem; }
 .muted { color: var(--text-muted); font-size: 0.9rem; }
 .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }

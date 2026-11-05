@@ -36,12 +36,13 @@ export function canSharp(step: number): boolean {
   return deg !== 2 && deg !== 6
 }
 
-export const LENGTHS: { beats: number; label: string }[] = [
-  { beats: 0.5, label: 'eighth' },
-  { beats: 1, label: 'quarter' },
-  { beats: 1.5, label: 'dotted quarter' },
-  { beats: 2, label: 'half' },
-  { beats: 4, label: 'whole' },
+/** The note lengths the composer offers. A beat is one tap of your foot. */
+export const LENGTHS: { beats: number; label: string; long: string }[] = [
+  { beats: 0.5, label: 'Eighth note', long: '½ beat, quick' },
+  { beats: 1, label: 'Quarter note', long: '1 beat' },
+  { beats: 1.5, label: 'Dotted quarter', long: '1½ beats (the dot adds half)' },
+  { beats: 2, label: 'Half note', long: '2 beats' },
+  { beats: 4, label: 'Whole note', long: '4 beats, a whole bar' },
 ]
 
 /** The nearest allowed length to a measured number of beats. */

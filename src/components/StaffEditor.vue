@@ -184,6 +184,14 @@ function onTap(e: PointerEvent) {
   const notes = slots.value.map((n) => ({ ...n }))
   if (col < notes.length) {
     if (props.mode === 'guess' && props.locked[col] != null) { selected.value = col; blip(props.locked[col]!, props.instrument); return }
+    // the first tap on a note (or rest) only selects it, so changing its length or making it a rest doesn't
+    // also move it; a second tap on the selected one moves it. An empty guess slot fills on the first tap.
+    const empty = props.mode === 'guess' && notes[col].m === null
+    if (col !== selected.value && !empty) {
+      selected.value = col
+      if (notes[col].m !== null) blip(notes[col].m!, props.instrument)
+      return
+    }
     notes[col] = { m: pitch, b: notes[col].b }
     selected.value = col
   } else if (canAppend.value && col === notes.length) {
