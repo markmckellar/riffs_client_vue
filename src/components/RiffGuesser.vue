@@ -9,8 +9,10 @@
         <h3>Buttons</h3>
         <dl>
           <dt>▶</dt><dd><b>Play the riff</b> as often as you like. Slide Tempo left to slow it down.</dd>
-          <dt>?</dt><dd>An empty slot. Tap the staff above it to put a note there; tap again to move it.</dd>
-          <dt>▲♯<br>▼♭</dt><dd>Move the selected note up or down a half step (sharps and flats).</dd>
+          <dt>🎹</dt><dd><b>The piano:</b> tap a key to hear it and put that note in the selected slot (or the next empty
+            one); it then moves on to the next slot. ‹ › change the octave. You can also tap the staff.</dd>
+          <dt>?</dt><dd>An empty slot. Tap it to select it.</dd>
+
           <dt>▶ My</dt><dd>Play your guess with the riff's rhythm, to compare by ear.</dd>
           <dt>Del</dt><dd>Empty the selected note (tap it first).</dd>
           <dt>Clear</dt><dd>Empty all your guess notes. Known (green) notes stay.</dd>
@@ -57,9 +59,12 @@
       :contour="me.learner ? contour : null" :possible="me.learner ? possible : null"
       :lowest="rules.lowest" :highest="rules.highest" :instrument="instrument" />
 
+    <!-- the note keyboard: a piano. A key fills the selected slot (or the first empty one) and moves on, like typing. -->
+    <PianoKeys v-model:start="pianoStart" :lowest="rules.lowest" :highest="rules.highest"
+      :current="selected >= 0 ? slots[selected]?.m ?? null : null" :instrument="instrument" @press="onPiano" />
+
     <div class="toolbar">
       <div class="tools">
-        <StepButtons labels :disabled="!editable" @up="nudge(1)" @down="nudge(-1)" />
         <button type="button" class="btn btn_primary btn_small my_guess" :disabled="!slots.length" @click="playGuess">▶ My guess</button>
         <button type="button" class="tool" :disabled="!editable" title="Empty the selected note" @click="delSelected">Del</button>
         <button type="button" class="tool" :disabled="!canClear" title="Empty your guess notes (known green notes stay)" @click="clearGuess">Clear</button>
@@ -112,7 +117,7 @@ import { play, type Playback } from '../ts/synth'
 import StaffEditor from './StaffEditor.vue'
 import GuessHistory from './GuessHistory.vue'
 import HelpSheet from './HelpSheet.vue'
-import StepButtons from './StepButtons.vue'
+import PianoKeys from './PianoKeys.vue'
 
 const props = defineProps<{ round: Round; rules: Rules; instrument: string; me: Player; busy: boolean }>()
 const emit = defineEmits<{ guess: [number[]]; hint: []; extraString: []; learner: [boolean] }>()
@@ -187,6 +192,27 @@ function hearOne() {
   play([{ m, b: 1.5 }], props.instrument, 90)
 }
 
+// ---- the piano
+/** the piano opens on the octave of the given first note; in the lowest octave (only G3–B3 are in the game's range)
+ *  it opens one up, where the riff will mostly be */
+const firstOctave = Math.floor(((props.round.revealed[0] ?? 60) as number) / 12) * 12
+const pianoStart = ref(Math.min(72, Math.max(60, firstOctave)))
+/** the slot a piano key goes into: the selected one if it can change, else the first empty one */
+function targetSlot(): number {
+  const s = selected.value
+  if (s >= 0 && props.round.revealed[s] == null) return s
+  return slots.value.findIndex((n, i) => n.m === null && props.round.revealed[i] == null)
+}
+function onPiano(m: number) {
+  const t = targetSlot()
+  if (t < 0) return    // every note is filled in: select one to change it
+  slots.value = slots.value.map((n, i) => (i === t ? { ...n, m } : n))
+  // move on to the next empty slot, like typing; stay put if there is none
+  const next = slots.value.findIndex((n, i) => i > t && n.m === null && props.round.revealed[i] == null)
+  const anyEmpty = slots.value.findIndex((n, i) => n.m === null && props.round.revealed[i] == null)
+  selected.value = next >= 0 ? next : anyEmpty >= 0 ? anyEmpty : t
+}
+
 /** Del: empty the selected note (it goes back to "?"). */
 function delSelected() {
   if (!editable.value) return
@@ -197,11 +223,6 @@ const canClear = computed(() => slots.value.some((n, i) => n.m !== null && props
 function clearGuess() {
   slots.value = slots.value.map((n, i) => (props.round.revealed[i] == null ? { m: null, b: n.b } : n))
   selected.value = -1
-}
-
-function nudge(d: number) {
-  slots.value = slots.value.map((n, i) => (i === selected.value && n.m !== null
-    ? { ...n, m: Math.min(props.rules.highest, Math.max(props.rules.lowest, n.m + d)) } : n))
 }
 
 /** Index of the sounding note (guess slot) for an index into the riff, which may contain rests. */
