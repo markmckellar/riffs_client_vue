@@ -63,7 +63,11 @@ async function signedInSetup() {
   if ('Notification' in window && Notification.permission === 'default') void Notification.requestPermission().catch(() => {})
 }
 async function setLearner(on: boolean) { try { me.value = await api.setLearner(on) } catch { /* offline: unchanged */ } }
-async function signOut() { await api.logout(); me.value = null; stopPolling(); go('') }
+async function signOut() {
+  await api.logout(); me.value = null; stopPolling(); go('')
+  toasts.value = []
+  shown.splice(0).forEach((n) => n.close())
+}
 async function rematch(opponentId: string) { const g = await api.start(opponentId); go('game/' + g.id) }
 
 // ---- hearing about the other player's moves: ask the server every few seconds
@@ -93,15 +97,23 @@ function notify(e: GameEvent) {
   const openHere = route.gameId === e.gameId
   if (!openHere || document.hidden) {
     toasts.value.push(e)
-    window.setTimeout(() => { toasts.value = toasts.value.filter((t) => t !== e) }, 6000)
+    // by its number: the array holds Vue's wrapped copies, so "t !== e" never matched and toasts never went away
+    window.setTimeout(() => { toasts.value = toasts.value.filter((t) => t.seq !== e.seq) }, 6000)
   }
   if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
     const n = new Notification(gameName.value, { body: e.text, tag: e.gameId })
     n.onclick = () => { window.focus(); go('game/' + e.gameId) }
+    shown.push(n)
   }
   if (navigator.vibrate && (e.type === 'riff_ready' || e.type === 'round_over')) navigator.vibrate(80)
 }
-function openToast(t: GameEvent) { toasts.value = toasts.value.filter((x) => x !== t); go('game/' + t.gameId) }
+function openToast(t: GameEvent) { toasts.value = toasts.value.filter((x) => x.seq !== t.seq); go('game/' + t.gameId) }
+
+// phone notifications (shown while the page was in the background) close once you're back in the game
+const shown: Notification[] = []
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) shown.splice(0).forEach((n) => n.close())
+})
 </script>
 
 <style scoped>

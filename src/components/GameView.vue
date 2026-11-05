@@ -77,7 +77,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { api, type GameView, type Note, type Round, type Rules } from '../ts/api'
 import { TIER_LABEL } from '../ts/music'
-import { play } from '../ts/synth'
+import { play, snap } from '../ts/synth'
 import EncoreMeter from './EncoreMeter.vue'
 import InstrumentPicker from './InstrumentPicker.vue'
 import RiffComposer from './RiffComposer.vue'
@@ -105,6 +105,19 @@ async function load() {
   try { game.value = await api.game(props.gameId); error.value = '' } catch (e) { error.value = (e as Error).message }
 }
 watch(() => [props.gameId, props.refresh], load, { immediate: true })
+
+// A snap for every string that breaks: each new wrong guess, yours or your opponent's (when you're watching them
+// guess your riff). Compares the game before and after each reload, so the last wrong guess of a round (after
+// which the screen moves on to the next round) still sounds.
+watch(game, (now, before) => {
+  if (!now || !before || now.id !== before.id) return
+  let breaks = 0
+  for (const r of now.rounds) {
+    const old = before.rounds.find((x) => x.number === r.number)
+    if (old && r.guesses.length > old.guesses.length) breaks += r.guesses.slice(old.guesses.length).filter((g) => !g.correct).length
+  }
+  for (let i = 0; i < Math.min(breaks, 3); i++) snap(i * 0.35)
+})
 
 // Don't rely only on the events feed (it's in memory; a server restart loses it): while it's the other player's
 // turn, ask for the game every few seconds, and again whenever the page comes back into view.

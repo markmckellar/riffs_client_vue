@@ -177,3 +177,48 @@ export function blip(midi: number, instrument: string) {
   g.connect(c.destination)
   playOne(c, instrument, midi, c.currentTime + 0.01, 0.35, g)
 }
+
+/**
+ * A guitar string breaking: a sharp crack (a burst of high noise) and a twang that slides down as the loose
+ * string goes slack. Made on the fly like the instruments, nothing to download.
+ */
+export function snap(delay = 0) {
+  const c = audio()
+  const t = c.currentTime + 0.02 + delay
+  const out = c.createGain()
+  out.gain.value = 0.6
+  out.connect(c.destination)
+
+  // the crack
+  const len = Math.floor(c.sampleRate * 0.06)
+  const buf = c.createBuffer(1, len, c.sampleRate)
+  const d = buf.getChannelData(0)
+  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3)
+  const noise = c.createBufferSource()
+  noise.buffer = buf
+  const hp = c.createBiquadFilter()
+  hp.type = 'highpass'
+  hp.frequency.value = 1800
+  const ng = c.createGain()
+  ng.gain.value = 0.9
+  noise.connect(hp).connect(ng).connect(out)
+  noise.start(t)
+
+  // the twang, sliding down
+  const o = c.createOscillator()
+  o.type = 'sawtooth'
+  o.frequency.setValueAtTime(420, t)
+  o.frequency.exponentialRampToValueAtTime(70, t + 0.45)
+  const lp = c.createBiquadFilter()
+  lp.type = 'lowpass'
+  lp.frequency.setValueAtTime(3000, t)
+  lp.frequency.exponentialRampToValueAtTime(300, t + 0.45)
+  const og = c.createGain()
+  og.gain.setValueAtTime(0.0001, t)
+  og.gain.exponentialRampToValueAtTime(0.35, t + 0.005)
+  og.gain.exponentialRampToValueAtTime(0.0001, t + 0.5)
+  o.connect(lp).connect(og).connect(out)
+  o.start(t)
+  o.stop(t + 0.55)
+  window.setTimeout(() => out.disconnect(), (delay + 0.8) * 1000)
+}
