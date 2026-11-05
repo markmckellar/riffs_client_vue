@@ -10,7 +10,7 @@
         <dl>
           <dt>▶</dt><dd><b>Play the riff</b> as often as you like. Slide Tempo left to slow it down.</dd>
           <dt>?</dt><dd>An empty slot. Tap the staff above it to put a note there; tap again to move it.</dd>
-          <dt>▲♯ ▼♭</dt><dd>Move the selected note up or down a half step (sharps and flats).</dd>
+          <dt>▲♯<br>▼♭</dt><dd>Move the selected note up or down a half step (sharps and flats).</dd>
           <dt>▶ My</dt><dd>Play your guess with the riff's rhythm, to compare by ear.</dd>
           <dt>Clear</dt><dd>Empty your guess notes. Known (green) notes stay.</dd>
           <dt>Guess!</dt><dd>Check it. Every note gets a coloured dot.</dd>
@@ -58,8 +58,7 @@
 
     <div class="toolbar">
       <div class="tools">
-        <button type="button" class="tool" :disabled="!editable" @click="nudge(1)">▲ ♯</button>
-        <button type="button" class="tool" :disabled="!editable" @click="nudge(-1)">▼ ♭</button>
+        <StepButtons labels :disabled="!editable" @up="nudge(1)" @down="nudge(-1)" />
         <button type="button" class="tool" :disabled="!slots.length" @click="playGuess">▶ My guess</button>
         <button type="button" class="tool" :disabled="!canClear" title="Empty your guess notes (known green notes stay)" @click="clearGuess">Clear</button>
         <button v-if="me.learner" type="button" class="tool tool_learn" :disabled="selected < 0" @click="hearOne">
@@ -95,6 +94,7 @@ import StaffEditor from './StaffEditor.vue'
 import GuitarStrings from './GuitarStrings.vue'
 import GuessHistory from './GuessHistory.vue'
 import HelpSheet from './HelpSheet.vue'
+import StepButtons from './StepButtons.vue'
 
 const props = defineProps<{ round: Round; rules: Rules; instrument: string; me: Player; busy: boolean }>()
 const emit = defineEmits<{ guess: [number[]]; hint: []; extraString: []; learner: [boolean] }>()

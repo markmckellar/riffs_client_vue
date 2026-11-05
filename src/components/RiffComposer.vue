@@ -60,10 +60,7 @@
     <div v-else class="notebox editbar" role="toolbar" aria-label="Edit the selected note">
       <div class="editbar_head">
         <strong class="editbar_title">Edit #{{ selected + 1 }}: {{ selNote ? noteName(selNote.m!) : 'rest' }}</strong>
-        <template v-if="selNote">
-          <button type="button" class="tool tool_small" title="Up a half step" aria-label="Up a half step" @click="nudge(1)">▲</button>
-          <button type="button" class="tool tool_small" title="Down a half step" aria-label="Down a half step" @click="nudge(-1)">▼</button>
-        </template>
+        <StepButtons v-if="selNote" @up="nudge(1)" @down="nudge(-1)" />
         <span class="editbar_gap"></span>
         <button type="button" class="btn btn_small btn_primary" @click="selected = -1">✓ Done</button>
       </div>
@@ -126,6 +123,7 @@ import NoteGlyph from './NoteGlyph.vue'
 import MicRecorder from './MicRecorder.vue'
 import LibraryPicker from './LibraryPicker.vue'
 import HelpSheet from './HelpSheet.vue'
+import StepButtons from './StepButtons.vue'
 
 const props = defineProps<{ gameId: string; rules: Rules; instrument: string; opponentName: string }>()
 const emit = defineEmits<{ send: [notes: Note[], tuneId: string | undefined] }>()
@@ -261,7 +259,6 @@ onBeforeUnmount(() => playback.value?.stop())
 .editbar_head { display: flex; align-items: center; gap: 6px; }
 .editbar_gap { flex: 1; }
 .editbar_title, .editbar_head .btn { white-space: nowrap; }
-.tool_small { min-height: 34px; min-width: 38px; padding: 4px 8px; }
 .seg_delete { color: var(--bad); font-size: 1rem; }
 .tool_danger { color: var(--bad); }
 .composer_head h2 { margin: 0; font-size: 1.25rem; }
