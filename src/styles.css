@@ -73,6 +73,6 @@ button { -webkit-tap-highlight-color: transparent; }
 .key:disabled { opacity: 0.4; cursor: default; }
 .key_on { background: var(--accent); color: var(--accent-contrast); border-color: #ffe08a; border-bottom-color: #b08a14; }
 .key_space { flex-grow: 2.2; }
-.key_back, .key_del { flex-grow: 1.2; font-size: 1.05rem; }
+.key_back, .key_del, .key_enter { flex-grow: 1.2; font-size: 1.05rem; }
 .key_del { color: var(--bad); }
 .key_label { font-size: 0.66rem; font-weight: 700; opacity: 0.85; max-width: 100%; overflow: hidden; white-space: nowrap; }

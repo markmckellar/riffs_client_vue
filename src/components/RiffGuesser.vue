@@ -9,14 +9,14 @@
         <h3>Buttons</h3>
         <dl>
           <dt>▶</dt><dd><b>Play the riff</b> as often as you like. Slide Tempo left to slow it down.</dd>
-          <dt>🎹</dt><dd><b>The piano:</b> tap a key to hear it and put that note in the selected slot (or the next empty
-            one); it then moves on to the next slot. The C keys are marked C4, C5, C6. You can also tap the staff.</dd>
+          <dt>🎹</dt><dd><b>The piano:</b> tap a key to hear it and put that note in the selected slot. Try keys until it
+            sounds right, then <b>⏎</b> moves to the next note; <b>⌫</b> empties a note (or the one before). The C keys
+            are marked C4, C5, C6. You can also tap the staff.</dd>
           <dt>?</dt><dd>An empty slot. Tap it to select it.</dd>
 
           <dt>⅛…1</dt><dd><b>Lengths count:</b> pick a length, then a piano key. To change a note's length, tap the note,
             then a length.</dd>
           <dt>▶ My</dt><dd>Play your guess (your notes and lengths), to compare by ear.</dd>
-          <dt>Del</dt><dd>Empty the selected note (tap it first).</dd>
           <dt>Clear</dt><dd>Empty all your guess notes. Known (green) notes stay.</dd>
           <dt>Guess!</dt><dd>Check it. Every note gets a coloured dot.</dd>
         </dl>
@@ -67,6 +67,12 @@
         :aria-pressed="shownLength === l.beats" :class="['key', { key_on: shownLength === l.beats }]" @click="pickLength(l.beats)">
         <span class="key_label">{{ l.frac }}</span><NoteGlyph :beats="l.beats" />
       </button>
+      <button type="button" class="key key_back" title="Backspace: empty this note (or the one before)" aria-label="Backspace" @click="backspace">
+        <span class="key_label">back</span>⌫
+      </button>
+      <button type="button" class="key key_enter" title="Enter: next note" aria-label="Enter: next note" @click="enter">
+        <span class="key_label">next</span>⏎
+      </button>
     </div>
     <!-- the note keyboard: a piano. A key fills the selected slot (or the first empty one) and moves on, like typing. -->
     <PianoKeys :lowest="rules.lowest" :highest="rules.highest"
@@ -75,7 +81,6 @@
     <div class="toolbar">
       <div class="tools">
         <button type="button" class="btn btn_primary btn_small my_guess" :disabled="!slots.length" @click="playGuess">▶ My guess</button>
-        <button type="button" class="tool" :disabled="!editable" title="Empty the selected note" @click="delSelected">Del</button>
         <button type="button" class="tool" :disabled="!canClear" title="Empty your guess notes (known green notes stay)" @click="clearGuess">Clear</button>
         <button v-if="me.learner" type="button" class="tool tool_learn" :disabled="selected < 0" @click="hearOne">
           👂 {{ selected < 0 ? 'Tap a note, then hear it' : `Hear note ${selected + 1}` }}
@@ -231,17 +236,32 @@ function onPiano(m: number) {
   const t = targetSlot()
   if (t < 0) return    // every note is filled in: select one to change it
   slots.value = slots.value.map((n, i) => (i === t ? { m, b: knownBeats(i) ?? guessLength.value } : n))
-  // move on to the next empty slot, like typing; stay put if there is none
-  const next = slots.value.findIndex((n, i) => i > t && n.m === null && props.round.revealed[i] == null)
-  const anyEmpty = slots.value.findIndex((n, i) => n.m === null && props.round.revealed[i] == null)
-  selected.value = next >= 0 ? next : anyEmpty >= 0 ? anyEmpty : t
+  selected.value = t    // stay on this note: try other keys until it sounds right, then ⏎
 }
 
-/** Del: empty the selected note (it goes back to "?"). */
-function delSelected() {
-  if (!editable.value) return
-  slots.value = slots.value.map((n, i) => (i === selected.value ? { m: null, b: n.b } : n))
+/** a slot the player can still change (pitch or length unknown) */
+const changeable = (i: number) => props.round.revealed[i] == null || knownBeats(i) == null
+/** ⏎: on to the next note that isn't fully known */
+function enter() {
+  const from = selected.value
+  let next = slots.value.findIndex((_, i) => i > from && changeable(i))
+  if (next < 0) next = slots.value.findIndex((n, i) => changeable(i) && n.m === null)    // back to an empty one
+  if (next >= 0) selected.value = next
 }
+/** ⌫: empty this note; if it's already empty (or known), step back and empty the one before, like typing */
+function backspace() {
+  const canEmpty = (i: number) => props.round.revealed[i] == null && slots.value[i]?.m != null
+  let t = selected.value >= 0 ? selected.value : slots.value.length - 1
+  if (!canEmpty(t)) {
+    let p = t - 1
+    while (p >= 0 && props.round.revealed[p] != null) p--
+    if (p < 0) return
+    t = p
+  }
+  slots.value = slots.value.map((n, i) => (i === t ? { ...n, m: null } : n))
+  selected.value = t
+}
+
 /** Empty every guessed note the player could still change (the known ones stay). */
 const canClear = computed(() => slots.value.some((n, i) => n.m !== null && props.round.revealed[i] == null))
 function clearGuess() {
