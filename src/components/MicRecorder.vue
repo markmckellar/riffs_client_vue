@@ -1,6 +1,6 @@
 <template>
   <span class="mic">
-    <button type="button" :class="['btn', recording ? 'btn_rec' : 'btn_ghost']" @click="toggle">
+    <button type="button" :class="['tool', { btn_rec: recording }]" @click="toggle">
       {{ recording ? '■ Stop listening' : '🎙 Play it in' }}
     </button>
     <span v-if="recording" class="mic_live">

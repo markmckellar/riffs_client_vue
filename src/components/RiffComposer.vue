@@ -37,10 +37,8 @@
           :disabled="selected < 0 && rests >= rules.maxRests" @click="restKey">␣ rest</button>
         <button v-if="undoNotes" type="button" class="tool btn_undo" @click="undoClear">↶ Undo</button>
         <button v-else type="button" class="tool" :disabled="!notes.length" @click="clear">Clear</button>
+        <MicRecorder :bpm="bpm" :lowest="rules.lowest" :highest="rules.highest" :max-notes="rules.maxNotes" @notes="fromMic" />
       </div>
-    </div>
-    <div class="row">
-      <MicRecorder :bpm="bpm" :lowest="rules.lowest" :highest="rules.highest" :max-notes="rules.maxNotes" @notes="fromMic" />
     </div>
 
 
