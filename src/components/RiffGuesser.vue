@@ -10,7 +10,7 @@
         <dl>
           <dt>▶</dt><dd><b>Play the riff</b> as often as you like. Slide Tempo left to slow it down.</dd>
           <dt>🎹</dt><dd><b>The piano:</b> tap a key to hear it and put that note in the selected slot (or the next empty
-            one); it then moves on to the next slot. ‹ › change the octave. You can also tap the staff.</dd>
+            one); it then moves on to the next slot. The C keys are marked C4, C5, C6. You can also tap the staff.</dd>
           <dt>?</dt><dd>An empty slot. Tap it to select it.</dd>
 
           <dt>⅛…1</dt><dd><b>Lengths count:</b> pick a length, then a piano key. To change a note's length, tap the note,
@@ -69,7 +69,7 @@
       </button>
     </div>
     <!-- the note keyboard: a piano. A key fills the selected slot (or the first empty one) and moves on, like typing. -->
-    <PianoKeys v-model:start="pianoStart" :lowest="rules.lowest" :highest="rules.highest"
+    <PianoKeys :lowest="rules.lowest" :highest="rules.highest"
       :current="selected >= 0 ? slots[selected]?.m ?? null : null" :instrument="instrument" @press="onPiano" />
 
     <div class="toolbar">
@@ -208,10 +208,6 @@ function hearOne() {
 }
 
 // ---- the piano
-/** the piano opens on the octave of the given first note; in the lowest octave (only G3–B3 are in the game's range)
- *  it opens one up, where the riff will mostly be */
-const firstOctave = Math.floor(((props.round.revealed[0] ?? 60) as number) / 12) * 12
-const pianoStart = ref(Math.min(72, Math.max(60, firstOctave)))
 /** the slot a piano key goes into: the selected one if it can change, else the first empty one */
 function targetSlot(): number {
   const s = selected.value
