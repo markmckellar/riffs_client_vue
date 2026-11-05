@@ -1,14 +1,20 @@
 <template>
   <section class="guesser">
-    <header class="guesser_head">
-      <h2>Guess the riff</h2>
-      <span class="muted">{{ round.length }} notes · first note given</span>
+    <!-- one row: play the riff, the sound, and Learner mode (what Learner mode gives is in 💡 Help and ⓘ) -->
+    <div class="row">
+      <button type="button" class="btn btn_primary" @click="togglePlay">{{ playback ? '■ Stop' : '▶ Guess the riff' }}</button>
+      <InstrumentPicker bare />
+      <label class="learner_switch" title="Learner mode: shape arrows, where a note could be, a free note every 2 misses (half points)">
+        <input type="checkbox" :checked="me.learner" :disabled="busy" @change="emit('learner', !me.learner)" />
+        🎓 Learner
+      </label>
+      <span class="row_gap"></span>
       <HelpSheet title="How to guess a riff" storage-key="riffs_help_guess">
         <p>Listen to the riff, then write it down on the staff. The <b>first note is given</b> (green), so you can
           work out the rest from it: is the next one higher or lower, a small step or a jump?</p>
         <h3>Buttons</h3>
         <dl>
-          <dt>▶</dt><dd><b>Play the riff</b> as often as you like. The drop-down next to it picks the sound.</dd>
+          <dt>▶</dt><dd><b>Guess the riff</b> plays the riff, as often as you like. The drop-down next to it picks the sound.</dd>
           <dt>🎹</dt><dd><b>The piano:</b> tap a key to hear it and put that note in the selected slot. Try keys until it
             sounds right, then <b>⏎</b> moves to the next note; <b>⌫</b> empties a note (or the one before). The C keys
             are marked C4, C5, C6. You can also tap the staff.</dd>
@@ -41,15 +47,6 @@
           <dt>🎁</dt><dd>A free note after every 2 wrong guesses. Guessed riffs earn half points.</dd>
         </dl>
       </HelpSheet>
-    </header>
-    <!-- one row: play the riff, the sound, and Learner mode (what Learner mode gives is in 💡 Help and ⓘ) -->
-    <div class="row">
-      <button type="button" class="btn btn_primary" @click="togglePlay">{{ playback ? '■ Stop' : '▶ Play the riff' }}</button>
-      <InstrumentPicker bare />
-      <label class="learner_switch" title="Learner mode: shape arrows, where a note could be, a free note every 2 misses (half points)">
-        <input type="checkbox" :checked="me.learner" :disabled="busy" @change="emit('learner', !me.learner)" />
-        🎓 Learner
-      </label>
     </div>
 
 
@@ -264,12 +261,10 @@ onBeforeUnmount(() => playback.value?.stop())
 
 <style scoped>
 .guesser { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); }
-.guesser_head { display: flex; align-items: center; gap: 10px; }
-.guesser_head h2 { flex: 1; }
 .bar { display: inline-block; width: 26px; height: 8px; border-radius: 4px; background: var(--good); opacity: 0.5; }
-.guesser_head h2 { margin: 0; font-size: 1.25rem; }
 .muted { color: var(--text-muted); font-size: 0.9rem; }
 .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.row_gap { flex: 1; }
 .toolbar { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
 .tools { display: flex; gap: 6px; flex-wrap: wrap; }
 .learner_switch { display: flex; gap: 6px; align-items: center; font-size: 0.9rem; cursor: pointer; white-space: nowrap; }
