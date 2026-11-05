@@ -95,8 +95,6 @@
     <!-- only news stays on screen: a free note just given -->
     <p v-if="freeNoteNow" class="learn_tip">🎁 Free note! One more note is filled in for you.</p>
 
-    <p :class="['strings_line', { strings_low: me.strings <= 2 }]">🎸 You have <b>{{ me.strings }}</b> {{ me.strings === 1 ? 'string' : 'strings' }} left
-      · a wrong guess snaps one<template v-if="me.strings === 1"> · <b>last string!</b></template></p>
     <button type="button" class="btn btn_primary btn_big" :disabled="!complete || busy" @click="submit">
       {{ complete ? 'Guess!' : `Fill in ${missing} more note${missing === 1 ? '' : 's'}` }}
     </button>
@@ -268,9 +266,6 @@ onBeforeUnmount(() => playback.value?.stop())
 .learner_switch input { accent-color: var(--accent); transform: translateY(2px); }
 .tool_learn { border-color: var(--good); }
 .learn_tip { margin: 0; font-size: 0.85rem; background: var(--surface-2); border-left: 3px solid var(--good); padding: 8px 10px; border-radius: var(--radius-sm); }
-.strings_line { margin: 0; font-size: 0.85rem; color: var(--text-muted); text-align: center; }
-.strings_line b { color: var(--text); }
-.strings_low, .strings_low b { color: var(--accent); }
 .ring { display: inline-block; width: 16px; height: 16px; border-radius: 50%; border: 2px dashed var(--bad); }
 .token_row { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
 .my_guess { min-height: 40px; }
