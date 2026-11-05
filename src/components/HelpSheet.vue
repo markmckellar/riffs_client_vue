@@ -1,7 +1,8 @@
 <template>
   <!-- A ⓘ button that opens a help sheet (slides up from the bottom on a phone). Opens by itself the first time
        a player sees this screen (remembered per screen in the browser), then only when tapped. -->
-  <button type="button" class="help_btn" :aria-label="'Help: ' + title" @click="open = true">ⓘ</button>
+  <button v-if="!label" type="button" class="help_btn" :aria-label="'Help: ' + title" @click="open = true">ⓘ</button>
+  <button v-else type="button" :class="buttonClass" :aria-label="title" @click="open = true">{{ label }}</button>
   <Teleport to="body">
     <div v-if="open" class="help_backdrop" @click.self="close">
       <section class="help_sheet" role="dialog" aria-modal="true" :aria-label="title">
@@ -9,7 +10,7 @@
           <h2>{{ title }}</h2>
           <button type="button" class="help_close" aria-label="Close" @click="close">✕</button>
         </header>
-        <div class="help_body"><slot /></div>
+        <div class="help_body"><slot :close="close" /></div>
         <button type="button" class="btn btn_primary help_ok" @click="close">Got it</button>
       </section>
     </div>
@@ -19,13 +20,23 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 
-const props = defineProps<{ title: string; /** remembers "seen" per screen */ storageKey: string }>()
+const props = withDefaults(defineProps<{
+  title: string
+  /** remembers "seen" per screen; empty = never opens by itself */
+  storageKey?: string
+  /** a text button instead of the round ⓘ */
+  label?: string
+  buttonClass?: string
+}>(), { storageKey: '', label: '', buttonClass: 'tool' })
 const open = ref(false)
 
-function seen(): boolean { try { return localStorage.getItem(props.storageKey) === '1' } catch { return true } }
+function seen(): boolean {
+  if (!props.storageKey) return true
+  try { return localStorage.getItem(props.storageKey) === '1' } catch { return true }
+}
 function close() {
   open.value = false
-  try { localStorage.setItem(props.storageKey, '1') } catch { /* storage blocked: it may open again next time */ }
+  if (props.storageKey) try { localStorage.setItem(props.storageKey, '1') } catch { /* storage blocked: it may open again next time */ }
 }
 function onKey(e: KeyboardEvent) { if (e.key === 'Escape' && open.value) close() }
 onMounted(() => {

@@ -58,8 +58,8 @@
       <div v-else class="over">
         <div class="over_icon">{{ won ? '🏆' : '🎻' }}</div>
         <h2>{{ won ? 'You won!' : `${game.opponent.name} won` }}</h2>
-        <p class="muted">{{ game.resigned ? (game.resigned === game.me.id ? 'You resigned.' : `${game.opponent.name} resigned.`) : `After ${game.rounds.length} rounds.` }}
-          You scored {{ game.me.points }} points.</p>
+        <p class="over_how">{{ overText }}</p>
+        <p class="muted">You scored {{ game.me.points }} points.</p>
         <button type="button" class="btn btn_primary" @click="emit('rematch', game.opponent.id)">Rematch</button>
       </div>
     </div>
@@ -135,6 +135,15 @@ const sendRiff = (notes: Note[], tuneId?: string) => act(() => api.sendRiff(prop
 const guess = (notes: number[]) => act(() => api.guess(props.gameId, notes))
 function resign() { if (confirm('Resign this game?')) void act(() => api.resign(props.gameId)) }
 
+/** How the game ended: who snapped their last string, or who resigned. */
+const overText = computed(() => {
+  const g = game.value
+  if (!g) return ''
+  if (g.resigned) return g.resigned === g.me.id ? 'You resigned.' : `${g.opponent.name} resigned.`
+  const loser = g.winner === g.me.id ? g.opponent.name : 'You'
+  return `${loser} snapped all ${props.rules.strings} strings 🎸💥`
+})
+
 function revealText(r: Round) {
   const me = game.value!.me.id
   const listenerName = r.listener === me ? 'You' : game.value!.opponent.name
@@ -168,6 +177,7 @@ function playMine() { if (current.value.riff) play(current.value.riff, instrumen
 .tier { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 99px; background: var(--surface-2); font-size: 0.75rem; font-weight: 700; color: var(--accent); }
 .waiting, .over { text-align: center; padding: 16px 0; }
 .waiting_icon, .over_icon { font-size: 2.6rem; }
+.over_how { margin: 4px 0; font-weight: 700; }
 .watching { display: grid; gap: 10px; }
 .watching h2 { margin: 0; font-size: 1.15rem; }
 .row { display: flex; gap: 10px; align-items: center; }

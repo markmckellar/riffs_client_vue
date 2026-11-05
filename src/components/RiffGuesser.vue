@@ -59,24 +59,39 @@
     <div class="toolbar">
       <div class="tools">
         <StepButtons labels :disabled="!editable" @up="nudge(1)" @down="nudge(-1)" />
-        <button type="button" class="tool" :disabled="!slots.length" @click="playGuess">▶ My guess</button>
+        <button type="button" class="btn btn_primary btn_small my_guess" :disabled="!slots.length" @click="playGuess">▶ My guess</button>
         <button type="button" class="tool" :disabled="!canClear" title="Empty your guess notes (known green notes stay)" @click="clearGuess">Clear</button>
         <button v-if="me.learner" type="button" class="tool tool_learn" :disabled="selected < 0" @click="hearOne">
           👂 {{ selected < 0 ? 'Tap a note, then hear it' : `Hear note ${selected + 1}` }}
         </button>
       </div>
-      <div class="tools">
-        <button type="button" class="tool" :disabled="!me.hints || busy" title="Reveal one note" @click="emit('hint')">💡 Hint ×{{ me.hints }}</button>
-        <button type="button" class="tool" :disabled="!me.extraStrings || me.strings >= rules.strings || busy" title="Put a snapped string back" @click="emit('extraString')">🎸 +String ×{{ me.extraStrings }}</button>
-      </div>
+      <!-- tips, what the dots mean, and the Hint / +String tokens: all behind one button -->
+      <HelpSheet title="Help with this riff" :label="'💡 Help' + (tokens ? ` ·${tokens}` : '')" button-class="tool">
+        <template #default="{ close }">
+          <p v-if="me.learner">{{ learnTip }}</p>
+          <h3>Use a token</h3>
+          <div class="token_row">
+            <button type="button" class="tool" :disabled="!me.hints || busy" @click="emit('hint'); close()">💡 Hint ×{{ me.hints }}</button>
+            <span class="muted">fills in one note</span>
+          </div>
+          <div class="token_row">
+            <button type="button" class="tool" :disabled="!me.extraStrings || me.strings >= rules.strings || busy" @click="emit('extraString'); close()">🎸 +String ×{{ me.extraStrings }}</button>
+            <span class="muted">puts a snapped string back</span>
+          </div>
+          <p v-if="!tokens" class="muted">You earn tokens by writing musical riffs.</p>
+          <h3>The dots under your notes</h3>
+          <dl>
+            <dt><i class="dot mark_exact"></i></dt><dd><b>Right.</b> It stays filled in.</dd>
+            <dt><i class="dot mark_octave"></i></dt><dd>Right note name, wrong octave.</dd>
+            <dt><i class="dot mark_close"></i></dt><dd><b>Close</b> (1–2 half steps). The arrow says higher ↑ or lower ↓.</dd>
+            <dt><i class="dot mark_miss"></i></dt><dd>Miss.</dd>
+          </dl>
+        </template>
+      </HelpSheet>
     </div>
 
-    <p v-if="me.learner" class="learn_tip">{{ learnTip }}</p>
-
-    <div class="legend">
-      <span><i class="dot mark_exact"></i>right</span><span><i class="dot mark_octave"></i>right note, wrong octave</span>
-      <span><i class="dot mark_close"></i>close (arrow shows which way)</span><span><i class="dot mark_miss"></i>miss</span>
-    </div>
+    <!-- only news stays on screen: a free note just given -->
+    <p v-if="freeNoteNow" class="learn_tip">🎁 Free note! One more note is filled in for you.</p>
 
     <p :class="['strings_line', { strings_low: me.strings <= 2 }]">🎸 You have <b>{{ me.strings }}</b> {{ me.strings === 1 ? 'string' : 'strings' }} left
       · a wrong guess snaps one<template v-if="me.strings === 1"> · <b>last string!</b></template></p>
@@ -152,10 +167,14 @@ const possible = computed(() => {
   for (let p = props.rules.lowest; p <= props.rules.highest; p++) if (fits(p, s) && fitsShape(p, s)) l.push(p)
   return l.length < props.rules.highest - props.rules.lowest + 1 ? l : null    // nothing ruled out yet: no bars
 })
+const tokens = computed(() => props.me.hints + props.me.extraStrings)
+/** the last guess just earned a learner's free note */
+const freeNoteNow = computed(() => {
+  const r = props.round
+  return props.me.learner && r.freeNotes > 0 && !!lastGuess.value && !lastGuess.value.correct && r.guesses.length % FREE_EVERY === 0
+})
 const learnTip = computed(() => {
   const r = props.round
-  if (r.freeNotes && lastGuess.value && !lastGuess.value.correct && r.guesses.length % FREE_EVERY === 0)
-    return '🎁 Free note! One more note is filled in for you.'
   if (!r.guesses.length) return 'Listen for the shape first: the arrows show where the melody goes up, down or stays. Tap a note to see where it could be (green), press 👂 to hear just that note, and tap the staff until yours sounds the same.'
   return 'Green bars show where the selected note can still be (from your guesses and the arrows). Tap a slot to see them.'
 })
@@ -230,6 +249,8 @@ onBeforeUnmount(() => playback.value?.stop())
 .strings_line { margin: 0; font-size: 0.85rem; color: var(--text-muted); text-align: center; }
 .strings_line b { color: var(--text); }
 .strings_low, .strings_low b { color: var(--accent); }
+.token_row { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
+.my_guess { min-height: 40px; }
 .legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 0.75rem; color: var(--text-muted); }
 .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; }
 .mark_exact { background: var(--good); } .mark_octave { background: var(--accent-2); }

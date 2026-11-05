@@ -4,16 +4,16 @@
       <h2>Write a riff</h2>
       <HelpSheet title="How to write a riff" storage-key="riffs_help_compose">
         <p><b>To add:</b> tap the staff at <b>+</b>, at the height of the note you want (higher = a higher note; its
-          name shows above the staff). Then pick its length in the box under the staff, or 𝄽 for a rest. ▲ ▼ in that
-          box move it a half step first (for a sharp ♯).</p>
+          name shows above the staff). Then tap its length on the keys under the staff (<b>space</b> adds a rest, <b>⌫</b>
+          removes the last note). ▲ ▼ there move it a half step first (for a sharp ♯).</p>
         <dl>
           <template v-for="l in LENGTHS" :key="l.beats"><dt>{{ l.frac }}&nbsp;<NoteGlyph :beats="l.beats" /></dt><dd><b>{{ l.label }}</b>: {{ l.long }}</dd></template>
           <dt>𝄽</dt><dd><b>Rest</b>: a silence (up to {{ rules.maxRests }} per riff).</dd>
         </dl>
         <p class="muted">A beat is one tap of your foot.</p>
         <p><b>To change a note:</b> tap it. An <b>Edit</b> box shows which note you're changing. Tap the staff above
-          it to move it, or use ▲ ▼ (half steps, which give sharps ♯). The row below picks its length, turns it into a
-          <b>rest</b> (or a rest back into a <b>note</b>), or 🗑 <b>deletes</b> it. <b>✓ Done</b> goes back to adding.</p>
+          it to move it, or use ▲ ▼ (half steps, which give sharps ♯). The keys below pick its length; <b>space</b> turns it into a
+          rest (or a rest back into a note); <b>Del</b> deletes it. <b>✓ Done</b> goes back to adding.</p>
         <h3>Other buttons</h3>
         <dl>
           <dt>🗑 Clear</dt><dd>Start over. You get a few seconds to undo it.</dd>
@@ -42,13 +42,18 @@
         <span class="editbar_gap"></span>
         <button type="button" class="notebox_x" aria-label="Cancel" @click="addPitch = null">✕</button>
       </div>
-      <div class="seg notebox_lengths" role="group" aria-label="Length">
+      <!-- like a keyboard: note keys, a space bar for a rest, backspace removes the last note -->
+      <div class="keys" role="group" aria-label="Note keys">
         <button v-for="l in LENGTHS" :key="l.beats" type="button" :title="l.label + ': ' + l.long" :disabled="sounding >= rules.maxNotes"
-          :class="['seg_btn', { seg_on: newLength === l.beats }]" @click="addAs(l.beats, false)">
-          <span class="seg_label">{{ l.frac }}</span><NoteGlyph :beats="l.beats" />
+          :class="['key', { key_on: newLength === l.beats }]" @click="addAs(l.beats, false)">
+          <span class="key_label">{{ l.frac }}</span><NoteGlyph :beats="l.beats" />
         </button>
-        <button type="button" title="Rest: a silence" :disabled="rests >= rules.maxRests" :class="['seg_btn', 'seg_rest']" @click="addAs(newLength, true)">
-          <span class="seg_label">rest</span>𝄽
+        <button type="button" class="key key_space" title="Space: add a rest (a silence)" :disabled="rests >= rules.maxRests" @click="addAs(newLength, true)">
+          <span class="key_label">rest</span>space
+        </button>
+        <button type="button" class="key key_back" title="Backspace: remove the last note" aria-label="Backspace: remove the last note"
+          :disabled="!notes.length" @click="backspace">
+          <span class="key_label">back</span>⌫
         </button>
       </div>
       <p class="caption">{{ sounding >= rules.maxNotes ? `The riff has ${rules.maxNotes} notes, the most; only a rest can be added.`
@@ -67,20 +72,20 @@
         <span class="editbar_gap"></span>
         <button type="button" class="btn btn_small btn_primary" @click="selected = -1">✓ Done</button>
       </div>
-      <!-- one row: its length, or make it a rest (a note, if it's a rest), or delete it -->
-      <div class="seg notebox_lengths" role="group" aria-label="Change it">
+      <!-- the same keys: its length, space = make it a rest (or a note again), Del = delete it -->
+      <div class="keys" role="group" aria-label="Change it">
         <button v-for="l in LENGTHS" :key="l.beats" type="button" :aria-pressed="notes[selected].b === l.beats"
-          :title="l.label + ': ' + l.long" :class="['seg_btn', { seg_on: notes[selected].b === l.beats }]" @click="setSelectedLength(l.beats)">
-          <span class="seg_label">{{ l.frac }}</span><NoteGlyph :beats="l.beats" />
+          :title="l.label + ': ' + l.long" :class="['key', { key_on: notes[selected].b === l.beats }]" @click="setSelectedLength(l.beats)">
+          <span class="key_label">{{ l.frac }}</span><NoteGlyph :beats="l.beats" />
         </button>
-        <button v-if="selNote" type="button" title="Make it a rest (a silence)" :disabled="rests >= rules.maxRests" class="seg_btn seg_rest" @click="toRest">
-          <span class="seg_label">rest</span>𝄽
+        <button v-if="selNote" type="button" class="key key_space" title="Space: make it a rest (a silence)" :disabled="rests >= rules.maxRests" @click="toRest">
+          <span class="key_label">rest</span>space
         </button>
-        <button v-else type="button" title="Make it a note" :disabled="sounding >= rules.maxNotes" class="seg_btn seg_rest" @click="toNote">
-          <span class="seg_label">note</span>♩
+        <button v-else type="button" class="key key_space" title="Space: make it a note again" :disabled="sounding >= rules.maxNotes" @click="toNote">
+          <span class="key_label">note</span>space
         </button>
-        <button type="button" title="Delete it" aria-label="Delete it" class="seg_btn seg_delete" @click="remove">
-          <span class="seg_label">delete</span>🗑
+        <button type="button" class="key key_del" title="Delete it" aria-label="Delete it" @click="remove">
+          <span class="key_label">&nbsp;</span>Del
         </button>
       </div>
       <p class="caption">{{ selNote ? 'Tap the staff above it to move it.' : 'A rest is a silence.' }}</p>
@@ -198,6 +203,8 @@ function addAs(b: number, rest: boolean) {
   addPitch.value = null
 }
 watch(selected, (i) => { if (i >= 0) addPitch.value = null })    // tapping a note to edit it cancels adding
+/** ⌫ in the Add box: remove the last note (the box stays open, like typing). */
+function backspace() { notes.value = notes.value.slice(0, -1) }
 function setSelectedLength(b: number) { notes.value = notes.value.map((x, i) => (i === selected.value ? { ...x, b } : x)) }
 function nudge(d: number) {
   notes.value = notes.value.map((x, i) => (i === selected.value && x.m !== null
@@ -254,26 +261,29 @@ onBeforeUnmount(() => playback.value?.stop())
 .composer_head { display: flex; align-items: center; gap: 10px; }
 .composer_head h2 { flex: 1; }
 .caption { width: 100%; margin: 0; font-size: 0.8rem; color: var(--text-muted); }
-.seg_rest { font-size: 1.15rem; min-width: 38px; }
-/* the length's name above its icon: ⅛ ¼ ⅜ ½ 1 */
-.seg .seg_btn { display: inline-flex; flex-direction: column; align-items: center; gap: 0; padding: 3px 8px 4px; line-height: 1; }
-.seg_label { font-size: 0.68rem; font-weight: 700; opacity: 0.85; margin-bottom: 1px; }
 .notebox { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; background: var(--surface-2); border: 1px solid var(--accent); border-radius: var(--radius); padding: 10px; margin-top: -6px; }
 .notebox_head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .notebox_x { background: none; border: 0; color: var(--text-muted); font-size: 1.1rem; min-width: 36px; min-height: 32px; cursor: pointer; }
-/* the length / rest / delete row always fits the box: the buttons share its width (bigger text or a narrow
-   phone used to push "delete" off the right edge) */
-.notebox_lengths { display: flex; width: 100%; max-width: 420px; justify-self: start; }
-.notebox_lengths { min-width: 0; }
-.notebox_lengths .seg_btn { flex: 1 1 0; min-width: 0; padding-left: 2px; padding-right: 2px; overflow: hidden; }
-.notebox_lengths .seg_label { max-width: 100%; overflow: hidden; white-space: nowrap; }
+/* keyboard-style keys; they share the box's width, so the row always fits (bigger text, narrow phones) */
+.keys { display: flex; gap: 4px; width: 100%; max-width: 440px; min-width: 0; }
+.key {
+  flex: 1 1 0; min-width: 0; overflow: hidden; display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 1px; line-height: 1; padding: 4px 2px 5px; min-height: 48px; font: inherit; font-size: 0.85rem; font-weight: 700;
+  color: var(--text); background: #3a3270; border: 1px solid #4a4290; border-bottom: 3px solid #1d1840; border-radius: 7px; cursor: pointer;
+}
+.key:active:not(:disabled) { transform: translateY(2px); border-bottom-width: 1px; }
+.key:disabled { opacity: 0.4; cursor: default; }
+.key_on { background: var(--accent); color: var(--accent-contrast); border-color: #ffe08a; border-bottom-color: #b08a14; }
+.key_space { flex-grow: 2.2; }
+.key_back, .key_del { flex-grow: 1.2; font-size: 1.05rem; }
+.key_del { color: var(--bad); }
+.key_label { font-size: 0.66rem; font-weight: 700; opacity: 0.85; max-width: 100%; overflow: hidden; white-space: nowrap; }
 .addhint { display: flex; align-items: center; gap: 10px; }
 .addhint .caption { flex: 1; width: auto; }
 .btn_undo { border-color: var(--accent); color: var(--accent); }
 .editbar_head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .editbar_gap { flex: 1; }
 .editbar_title, .editbar_head .btn { white-space: nowrap; }
-.seg_delete { color: var(--bad); font-size: 1rem; }
 .tool_danger { color: var(--bad); }
 .composer_head h2 { margin: 0; font-size: 1.25rem; }
 .count { color: var(--bad); font-weight: 700; }
