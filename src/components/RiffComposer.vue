@@ -4,7 +4,8 @@
       <h2>Write a riff</h2>
       <HelpSheet title="How to write a riff" storage-key="riffs_help_compose">
         <p><b>To add:</b> tap the staff at <b>+</b>, at the height of the note you want (higher = a higher note; its
-          name shows above the staff). Then pick its length in the box under the staff, or 𝄽 for a rest.</p>
+          name shows above the staff). Then pick its length in the box under the staff, or 𝄽 for a rest. ▲ ▼ in that
+          box move it a half step first (for a sharp ♯).</p>
         <dl>
           <template v-for="l in LENGTHS" :key="l.beats"><dt>{{ l.frac }}&nbsp;<NoteGlyph :beats="l.beats" /></dt><dd><b>{{ l.label }}</b>: {{ l.long }}</dd></template>
           <dt>𝄽</dt><dd><b>Rest</b>: a silence (up to {{ rules.maxRests }} per riff).</dd>
@@ -36,7 +37,9 @@
     <!-- Under the staff: what to add (after a tap at +), the note being edited (after a tap on a note), or a hint. -->
     <div v-if="addPitch !== null" class="notebox" role="dialog" aria-label="Choose the new note's length">
       <div class="notebox_head">
-        <strong>Add {{ noteName(addPitch) }} as:</strong>
+        <strong class="editbar_title">Add {{ noteName(addPitch) }} as:</strong>
+        <StepButtons @up="nudgeAdd(1)" @down="nudgeAdd(-1)" />
+        <span class="editbar_gap"></span>
         <button type="button" class="notebox_x" aria-label="Cancel" @click="addPitch = null">✕</button>
       </div>
       <div class="seg notebox_lengths" role="group" aria-label="Length">
@@ -117,7 +120,7 @@
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { api, type Evaluation, type Note, type Rules } from '../ts/api'
 import { LENGTHS, TIER_LABEL, noteName } from '../ts/music'
-import { play, type Playback } from '../ts/synth'
+import { blip, play, type Playback } from '../ts/synth'
 import StaffEditor from './StaffEditor.vue'
 import NoteGlyph from './NoteGlyph.vue'
 import MicRecorder from './MicRecorder.vue'
@@ -181,6 +184,12 @@ watch(notes, (n) => {
 /** A tap at +: remember the pitch (shown as a ghost note) and ask which length. */
 const addPitch = ref<number | null>(null)
 function onAdd(pitch: number) { addPitch.value = pitch }
+/** ▲▼ in the Add box: move the note being added a half step (how to add a sharp) before picking its length. */
+function nudgeAdd(d: number) {
+  if (addPitch.value === null) return
+  addPitch.value = Math.min(props.rules.highest, Math.max(props.rules.lowest, addPitch.value + d))
+  blip(addPitch.value, props.instrument)
+}
 /** Add the note (or a rest) with that length; the length is remembered and highlighted next time. */
 function addAs(b: number, rest: boolean) {
   if (addPitch.value === null) return
@@ -250,7 +259,7 @@ onBeforeUnmount(() => playback.value?.stop())
 .seg .seg_btn { display: inline-flex; flex-direction: column; align-items: center; gap: 0; padding: 3px 8px 4px; line-height: 1; }
 .seg_label { font-size: 0.68rem; font-weight: 700; opacity: 0.85; margin-bottom: 1px; }
 .notebox { display: grid; gap: 8px; background: var(--surface-2); border: 1px solid var(--accent); border-radius: var(--radius); padding: 10px; margin-top: -6px; }
-.notebox_head { display: flex; align-items: center; justify-content: space-between; }
+.notebox_head { display: flex; align-items: center; gap: 8px; }
 .notebox_x { background: none; border: 0; color: var(--text-muted); font-size: 1.1rem; min-width: 36px; min-height: 32px; cursor: pointer; }
 .notebox_lengths { justify-self: start; }
 .addhint { display: flex; align-items: center; gap: 10px; }
