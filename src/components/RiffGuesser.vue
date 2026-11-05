@@ -37,20 +37,20 @@
         <h3>🎓 Learner mode</h3>
         <dl>
           <dt>↗ ↘ →</dt><dd>The melody's shape: up, down or the same from one note to the next.</dd>
-          <dt>👂</dt><dd>Select a note slot and hear just that note of the riff.</dd>
           <dt><i class="bar"></i></dt><dd>Green bars: where the selected note can still be. Dashed = only as a sharp.</dd>
           <dt>🎁</dt><dd>A free note after every 2 wrong guesses. Guessed riffs earn half points.</dd>
         </dl>
       </HelpSheet>
     </header>
+    <!-- one row: play the riff, the sound, and Learner mode (what Learner mode gives is in 💡 Help and ⓘ) -->
     <div class="row">
       <button type="button" class="btn btn_primary" @click="togglePlay">{{ playback ? '■ Stop' : '▶ Play the riff' }}</button>
       <InstrumentPicker bare />
+      <label class="learner_switch" title="Learner mode: shape arrows, where a note could be, a free note every 2 misses (half points)">
+        <input type="checkbox" :checked="me.learner" :disabled="busy" @change="emit('learner', !me.learner)" />
+        🎓 Learner
+      </label>
     </div>
-    <label class="learner_switch">
-      <input type="checkbox" :checked="me.learner" :disabled="busy" @change="emit('learner', !me.learner)" />
-      🎓 Learner mode <small class="muted">shape arrows, hear one note, where it could be, a free note every {{ FREE_EVERY }} misses (half points)</small>
-    </label>
 
 
     <StaffEditor v-model="slots" v-model:selected="selected" mode="guess" plain-rhythm :locked="round.revealed"
@@ -61,23 +61,14 @@
     <!-- the note keyboard: a piano. A key fills the selected slot (or the first empty one) and moves on, like typing. -->
     <PianoKeys :lowest="rules.lowest" :highest="rules.highest"
       :current="selected >= 0 ? slots[selected]?.m ?? null : null" :instrument="instrument" @press="onPiano" />
-    <!-- under the piano: back (empty this note, or the one before) and next -->
-    <div class="keys guess_keys" role="group" aria-label="Back and next">
-      <button type="button" class="key key_back" title="Backspace: empty this note (or the one before)" aria-label="Backspace" @click="backspace">
-        <span class="key_label">back</span>⌫
-      </button>
-      <button type="button" class="key key_enter" title="Enter: next note" aria-label="Enter: next note" @click="enter">
-        <span class="key_label">next</span>⏎
-      </button>
-    </div>
 
     <div class="toolbar">
       <div class="tools">
         <button type="button" class="btn btn_primary btn_small my_guess" :disabled="!slots.length" @click="playGuess">▶ My guess</button>
+        <!-- back (empty this note, or the one before) and next, like a keyboard's backspace and enter -->
+        <button type="button" class="tool tool_key" title="Backspace: empty this note (or the one before)" aria-label="Backspace" @click="backspace">⌫</button>
+        <button type="button" class="tool tool_key" title="Enter: next note" aria-label="Enter: next note" @click="enter">⏎</button>
         <button type="button" class="tool" :disabled="!canClear" title="Empty your guess notes (known green notes stay)" @click="clearGuess">Clear</button>
-        <button v-if="me.learner" type="button" class="tool tool_learn" :disabled="selected < 0" @click="hearOne">
-          👂 {{ selected < 0 ? 'Tap a note, then hear it' : `Hear note ${selected + 1}` }}
-        </button>
       </div>
       <!-- tips, what the dots mean, and the Hint / +String tokens: all behind one button -->
       <HelpSheet title="Help with this riff" :label="'💡 Help' + (tokens ? ` ·${tokens}` : '')" button-class="tool">
@@ -193,15 +184,9 @@ const freeNoteNow = computed(() => {
 })
 const learnTip = computed(() => {
   const r = props.round
-  if (!r.guesses.length) return 'Listen for the shape first: the arrows show where the melody goes up, down or stays. Tap a note to see where it could be (green), press 👂 to hear just that note, and tap the staff until yours sounds the same.'
+  if (!r.guesses.length) return 'Listen for the shape first: the arrows show where the melody goes up, down or stays. Tap a note to see where it could be (green), then try piano keys until yours sounds right.'
   return 'Green bars show where the selected note can still be (from your guesses and the arrows). Tap a slot to see them.'
 })
-function hearOne() {
-  const m = answer.value[selected.value]
-  if (m === undefined) return
-  playback.value?.stop()
-  play([{ m, b: 1.5 }], props.instrument, 90)
-}
 
 // ---- the piano
 /** the slot a piano key goes into: the selected one if it can change, else the first empty one */
@@ -287,18 +272,17 @@ onBeforeUnmount(() => playback.value?.stop())
 .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .toolbar { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
 .tools { display: flex; gap: 6px; flex-wrap: wrap; }
-.learner_switch { display: flex; gap: 8px; align-items: baseline; font-size: 0.9rem; cursor: pointer; }
+.learner_switch { display: flex; gap: 6px; align-items: center; font-size: 0.9rem; cursor: pointer; white-space: nowrap; }
 .learner_switch input { accent-color: var(--accent); transform: translateY(2px); }
-.learner_switch small { font-size: 0.75rem; }
 .tool_learn { border-color: var(--good); }
 .learn_tip { margin: 0; font-size: 0.85rem; background: var(--surface-2); border-left: 3px solid var(--good); padding: 8px 10px; border-radius: var(--radius-sm); }
 .strings_line { margin: 0; font-size: 0.85rem; color: var(--text-muted); text-align: center; }
 .strings_line b { color: var(--text); }
 .strings_low, .strings_low b { color: var(--accent); }
 .ring { display: inline-block; width: 16px; height: 16px; border-radius: 50%; border: 2px dashed var(--bad); }
-.guess_keys { margin-top: -4px; }
 .token_row { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
 .my_guess { min-height: 40px; }
+.tool_key { font-size: 1.15rem; min-width: 48px; }
 .legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 0.75rem; color: var(--text-muted); }
 .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; }
 .mark_exact { background: var(--good); } .mark_octave { background: var(--accent-2); }

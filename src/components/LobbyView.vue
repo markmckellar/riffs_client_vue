@@ -8,7 +8,7 @@
     <label v-if="me" class="card learner_card">
       <input type="checkbox" :checked="me.learner" @change="emit('learner', !me.learner)" />
       <span><strong>🎓 Learner mode</strong><br><small class="muted">Helpers for training your ear while you guess: the melody's
-        shape, hear one note at a time, where a note could be, and a free note every 2 misses. Guessed riffs earn half points.</small></span>
+        shape, where a note could be, and a free note every 2 misses. Guessed riffs earn half points.</small></span>
     </label>
 
     <section class="card">
