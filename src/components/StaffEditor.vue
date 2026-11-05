@@ -69,7 +69,7 @@
         <!-- where the next note goes -->
         <g v-if="canAppend" class="staff_add">
           <rect :x="colX(slots.length) - COL / 2 + 4" y="10" :width="COL - 8" :height="height - 20" rx="8" />
-          <text :x="colX(slots.length)" :y="y(6) + 6">+</text>
+          <text :x="colX(slots.length)" :y="y(6) + 6">{{ newRest ? '+𝄽' : '+' }}</text>
         </g>
       </svg>
     </div>
@@ -97,6 +97,8 @@ const props = withDefaults(defineProps<{
   highest?: number
   /** the length new notes get (compose mode) */
   newLength?: number
+  /** compose mode: tapping + adds a rest instead of a note */
+  newRest?: boolean
   instrument?: string
   /** guess mode: draw every note as a quarter (the rhythm isn't guessed) */
   plainRhythm?: boolean
@@ -106,7 +108,7 @@ const props = withDefaults(defineProps<{
   possible?: number[] | null
 }>(), {
   mode: 'compose', locked: () => [], marks: null, markHints: null, highlight: -1, maxNotes: 8, maxRests: 2,
-  lowest: 55, highest: 84, newLength: 1, instrument: 'piano', plainRhythm: false, contour: null, possible: null,
+  lowest: 55, highest: 84, newLength: 1, newRest: false, instrument: 'piano', plainRhythm: false, contour: null, possible: null,
 })
 const emit = defineEmits<{ 'update:modelValue': [Note[]] }>()
 const selected = defineModel<number>('selected', { default: -1 })
@@ -120,7 +122,9 @@ const MIN_STEP = -5 // F3, room below G3
 const slots = computed(() => props.modelValue)
 const editable = computed(() => props.mode !== 'view')
 const soundingCount = computed(() => slots.value.filter((n) => n.m !== null).length)
-const canAppend = computed(() => props.mode === 'compose' && soundingCount.value < props.maxNotes)
+const restCount = computed(() => slots.value.length - soundingCount.value)
+const canAppend = computed(() => props.mode === 'compose'
+  && (props.newRest ? restCount.value < props.maxRests : soundingCount.value < props.maxNotes))
 const width = computed(() => LEFT + COL * (slots.value.length + (canAppend.value ? 1 : 0)) + 12)
 // above the staff: a row of note names, and in learner mode a row of shape arrows under it
 const NAME_ROW = 18
@@ -184,10 +188,9 @@ function onTap(e: PointerEvent) {
   const notes = slots.value.map((n) => ({ ...n }))
   if (col < notes.length) {
     if (props.mode === 'guess' && props.locked[col] != null) { selected.value = col; blip(props.locked[col]!, props.instrument); return }
-    // the first tap on a note (or rest) only selects it, so changing its length or making it a rest doesn't
-    // also move it; a second tap on the selected one moves it. An empty guess slot fills on the first tap.
-    const empty = props.mode === 'guess' && notes[col].m === null
-    if (col !== selected.value && !empty) {
+    // composing: tapping a note you aren't editing starts editing it (it doesn't move); while editing, a tap on
+    // it moves it. Guessing: a tap always places or moves the note at once (there's nothing else to edit).
+    if (props.mode === 'compose' && col !== selected.value) {
       selected.value = col
       if (notes[col].m !== null) blip(notes[col].m!, props.instrument)
       return
@@ -195,9 +198,19 @@ function onTap(e: PointerEvent) {
     notes[col] = { m: pitch, b: notes[col].b }
     selected.value = col
   } else if (canAppend.value && col === notes.length) {
+    // adding: a note at the tapped pitch, or a rest; nothing stays selected, so the next tap adds the next one
+    if (props.newRest) {
+      notes.push({ m: null, b: props.newLength })
+      selected.value = -1
+      emit('update:modelValue', notes)
+      return
+    }
     notes.push({ m: pitch, b: props.newLength })
-    selected.value = notes.length - 1
-  } else return
+    selected.value = props.mode === 'compose' ? -1 : notes.length - 1
+  } else {
+    if (props.mode === 'compose') selected.value = -1    // a tap on empty space stops editing
+    return
+  }
   blip(pitch, props.instrument)
   emit('update:modelValue', notes)
 }

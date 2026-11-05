@@ -9,8 +9,7 @@
         <h3>Buttons</h3>
         <dl>
           <dt>▶</dt><dd><b>Play the riff</b> as often as you like. Slide Tempo left to slow it down.</dd>
-          <dt>?</dt><dd>An empty slot. Tap the staff above it to put a note there. Tap a filled note once to select it,
-            again to move it.</dd>
+          <dt>?</dt><dd>An empty slot. Tap the staff above it to put a note there; tap again to move it.</dd>
           <dt>▲♯ ▼♭</dt><dd>Move the selected note up or down a half step (sharps and flats).</dd>
           <dt>▶ My</dt><dd>Play your guess with the riff's rhythm, to compare by ear.</dd>
           <dt>Guess!</dt><dd>Check it. Every note gets a coloured dot.</dd>

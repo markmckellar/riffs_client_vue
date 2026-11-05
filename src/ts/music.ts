@@ -37,12 +37,13 @@ export function canSharp(step: number): boolean {
 }
 
 /** The note lengths the composer offers. A beat is one tap of your foot. */
-export const LENGTHS: { beats: number; label: string; long: string }[] = [
-  { beats: 0.5, label: 'Eighth note', long: '½ beat, quick' },
-  { beats: 1, label: 'Quarter note', long: '1 beat' },
-  { beats: 1.5, label: 'Dotted quarter', long: '1½ beats (the dot adds half)' },
-  { beats: 2, label: 'Half note', long: '2 beats' },
-  { beats: 4, label: 'Whole note', long: '4 beats, a whole bar' },
+/** frac: the note's name as a fraction of a whole note (how musicians name them), shown on the buttons. */
+export const LENGTHS: { beats: number; label: string; long: string; frac: string }[] = [
+  { beats: 0.5, label: 'Eighth note', long: '½ beat, quick', frac: '⅛' },
+  { beats: 1, label: 'Quarter note', long: '1 beat', frac: '¼' },
+  { beats: 1.5, label: 'Dotted quarter', long: '1½ beats (the dot adds half)', frac: '⅜' },
+  { beats: 2, label: 'Half note', long: '2 beats', frac: '½' },
+  { beats: 4, label: 'Whole note', long: '4 beats, a whole bar', frac: '1' },
 ]
 
 /** The nearest allowed length to a measured number of beats. */

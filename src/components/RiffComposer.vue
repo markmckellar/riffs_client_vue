@@ -3,22 +3,18 @@
     <header class="composer_head">
       <h2>Write a riff</h2>
       <HelpSheet title="How to write a riff" storage-key="riffs_help_compose">
-        <p><b>Tap the staff</b> to place a note. Higher on the staff = a higher note. Its name (C, D, E…) shows above
-          the staff.</p>
-        <p><b>To change a note:</b> tap it once to select it (its name turns orange), then tap again where it should go,
-          or use the buttons below on it.</p>
-        <h3>Note lengths</h3>
+        <p><b>To add:</b> pick a note length (or 𝄽 for a rest) in the bar under the staff, then tap the staff at
+          <b>+</b>. Higher on the staff = a higher note. Its name (C, D, E…) shows above the staff.</p>
         <dl>
-          <template v-for="l in LENGTHS" :key="l.beats"><dt><NoteGlyph :beats="l.beats" /></dt><dd><b>{{ l.label }}</b>: {{ l.long }}</dd></template>
+          <template v-for="l in LENGTHS" :key="l.beats"><dt>{{ l.frac }}&nbsp;<NoteGlyph :beats="l.beats" /></dt><dd><b>{{ l.label }}</b>: {{ l.long }}</dd></template>
+          <dt>𝄽</dt><dd><b>Rest</b>: a silence (up to {{ rules.maxRests }} per riff).</dd>
         </dl>
-        <p class="muted">A beat is one tap of your foot. Pick a length, then tap the staff. To change a note's length,
-          tap the note, then a length.</p>
-        <h3>Buttons</h3>
+        <p class="muted">A beat is one tap of your foot.</p>
+        <p><b>To change a note:</b> tap it. An <b>Editing</b> bar shows which note you're changing. Tap the staff above
+          it to move it, or use ▲ ▼ (half steps, which give sharps ♯), its length, <b>Make it a rest</b> / <b>Make it a
+          note</b>, or 🗑 Delete. Tap <b>✓ Done</b> to go back to adding.</p>
+        <h3>Other buttons</h3>
         <dl>
-          <dt>▲ ▼</dt><dd>Move the selected note up or down a half step. That's how you get sharps (♯), the black piano keys.</dd>
-          <dt>𝄽 rest</dt><dd>A silence. Turns the selected note into a rest, or adds one at the end if nothing is selected.
-            Up to {{ rules.maxRests }} per riff. To make a rest a note again, select it and tap the staff.</dd>
-          <dt>⌫</dt><dd>Delete the selected note.</dd>
           <dt>Clear</dt><dd>Start over.</dd>
           <dt>▶</dt><dd>Hear your riff. Tempo sets how fast.</dd>
           <dt>🎙</dt><dd><b>Play it in:</b> sing, whistle or play into the phone, one note at a time, and it writes the notes down.</dd>
@@ -31,27 +27,50 @@
       </HelpSheet>
       <span :class="['count', { count_ok: countOk }]">{{ sounding }} notes <small>({{ rules.minNotes }}–{{ rules.maxNotes }})</small></span>
     </header>
-    <p class="hint">Tap the staff to place notes. Tap a note to select it, tap again to move it. {{ opponentName }} will hear it and try to write it down.</p>
+    <p class="hint">{{ opponentName }} will hear it and try to write it down.</p>
 
     <StaffEditor v-model="notes" v-model:selected="selected" mode="compose" :highlight="playing"
       :max-notes="rules.maxNotes" :max-rests="rules.maxRests" :lowest="rules.lowest" :highest="rules.highest"
-      :new-length="newLength" :instrument="instrument" />
+      :new-length="newLength" :new-rest="addRest" :instrument="instrument" />
 
-    <div class="toolbar" role="toolbar" aria-label="Note tools">
-      <div class="seg" role="radiogroup" aria-label="Note length">
-        <button v-for="l in LENGTHS" :key="l.beats" type="button" role="radio" :aria-checked="newLength === l.beats"
-          :title="l.label" :class="['seg_btn', { seg_on: newLength === l.beats }]" @click="setLength(l.beats)">
-          <NoteGlyph :beats="l.beats" />
+    <!-- Adding (nothing selected): pick what the next tap on + adds. Editing (a note tapped): change that note. -->
+    <div v-if="!editing" class="toolbar" role="toolbar" aria-label="Add notes">
+      <div class="seg" role="radiogroup" aria-label="What to add">
+        <button v-for="l in LENGTHS" :key="l.beats" type="button" role="radio" :aria-checked="!addRest && newLength === l.beats"
+          :title="l.label" :class="['seg_btn', { seg_on: !addRest && newLength === l.beats }]" @click="pickLength(l.beats)">
+          <span class="seg_label">{{ l.frac }}</span><NoteGlyph :beats="l.beats" />
         </button>
+        <button type="button" role="radio" :aria-checked="addRest" title="Rest (a silence)" :disabled="rests >= rules.maxRests && !addRest"
+          :class="['seg_btn', 'seg_rest', { seg_on: addRest }]" @click="addRest = true"><span class="seg_label">rest</span>𝄽</button>
       </div>
-      <div class="length_caption" aria-live="polite"><NoteGlyph :beats="newLength" /> {{ lengthInfo.label }} · {{ lengthInfo.long }}</div>
-      <div class="tools">
-        <button type="button" class="tool" title="Up a half step" :disabled="!selNote" @click="nudge(1)">▲</button>
-        <button type="button" class="tool" title="Down a half step" :disabled="!selNote" @click="nudge(-1)">▼</button>
-        <button type="button" class="tool" :title="selNote ? 'Make the selected note a rest' : 'Add a rest at the end'" :disabled="rests >= rules.maxRests" @click="addRest">𝄽 rest</button>
-        <button type="button" class="tool" title="Delete the selected note" :disabled="selected < 0" @click="remove">⌫</button>
-        <button type="button" class="tool" title="Start over" :disabled="!notes.length" @click="clear">Clear</button>
+      <button type="button" class="tool" title="Start over" :disabled="!notes.length" @click="clear">Clear</button>
+      <p class="caption" aria-live="polite">{{ addCaption }}</p>
+    </div>
+
+    <div v-else class="editbar" role="toolbar" aria-label="Edit the selected note">
+      <div class="editbar_head">
+        <strong>Editing #{{ selected + 1 }}: {{ selNote ? noteName(selNote.m!) : 'rest' }}</strong>
+        <span class="muted">· {{ lengthOf(notes[selected].b).label.toLowerCase() }}</span>
+        <button type="button" class="btn btn_small btn_primary" @click="selected = -1">✓ Done</button>
       </div>
+      <div class="editbar_row">
+        <template v-if="selNote">
+          <button type="button" class="tool" title="Up a half step" @click="nudge(1)">▲</button>
+          <button type="button" class="tool" title="Down a half step" @click="nudge(-1)">▼</button>
+        </template>
+        <div class="seg" role="radiogroup" aria-label="Its length">
+          <button v-for="l in LENGTHS" :key="l.beats" type="button" role="radio" :aria-checked="notes[selected].b === l.beats"
+            :title="l.label" :class="['seg_btn', { seg_on: notes[selected].b === l.beats }]" @click="setSelectedLength(l.beats)">
+            <span class="seg_label">{{ l.frac }}</span><NoteGlyph :beats="l.beats" />
+          </button>
+        </div>
+      </div>
+      <div class="editbar_row">
+        <button v-if="selNote" type="button" class="tool" :disabled="rests >= rules.maxRests" @click="toRest">𝄽 Make it a rest</button>
+        <button v-else type="button" class="tool" :disabled="sounding >= rules.maxNotes" @click="toNote">♩ Make it a note</button>
+        <button type="button" class="tool tool_danger" @click="remove">🗑 Delete</button>
+      </div>
+      <p class="caption">{{ selNote ? 'Tap the staff above it to move it, or use the buttons.' : 'A rest is a silence. Change its length, make it a note, or delete it.' }}</p>
     </div>
 
     <div class="row">
@@ -85,7 +104,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { api, type Evaluation, type Note, type Rules } from '../ts/api'
-import { LENGTHS, TIER_LABEL } from '../ts/music'
+import { LENGTHS, TIER_LABEL, noteName } from '../ts/music'
 import { play, type Playback } from '../ts/synth'
 import StaffEditor from './StaffEditor.vue'
 import NoteGlyph from './NoteGlyph.vue'
@@ -110,7 +129,15 @@ const evaluation = ref<Evaluation | null>(null)
 const sending = ref(false)
 
 const sounding = computed(() => notes.value.filter((n) => n.m !== null).length)
-const lengthInfo = computed(() => LENGTHS.find((l) => l.beats === newLength.value) ?? LENGTHS[1])
+const addRest = ref(false)    // the rest tool is chosen in the Add palette
+const editing = computed(() => selected.value >= 0 && selected.value < notes.value.length)
+function lengthOf(b: number) { return LENGTHS.find((l) => l.beats === b) ?? { beats: b, label: b + ' beats', long: b + ' beats' } }
+const addCaption = computed(() => {
+  if (addRest.value) return rests.value >= props.rules.maxRests ? `That's the most rests (${props.rules.maxRests}).` : `Tap + to add a rest (a silence, ${lengthOf(newLength.value).long}).`
+  if (sounding.value >= props.rules.maxNotes) return `The riff is full (${props.rules.maxNotes} notes). Tap a note to change it.`
+  const l = lengthOf(newLength.value)
+  return `Tap the staff at + to add a ${l.label.toLowerCase()} (${l.long}). Tap a note to change it.`
+})
 const rests = computed(() => notes.value.length - sounding.value)
 const countOk = computed(() => sounding.value >= props.rules.minNotes && sounding.value <= props.rules.maxNotes)
 const selNote = computed(() => { const n = notes.value[selected.value]; return n && n.m !== null ? n : null })
@@ -145,27 +172,22 @@ watch(notes, (n) => {
   }, 300)
 }, { immediate: true, deep: true })
 
-function setLength(b: number) {
-  newLength.value = b
-  const n = notes.value[selected.value]
-  if (n) notes.value = notes.value.map((x, i) => (i === selected.value ? { ...x, b } : x))
-}
+function pickLength(b: number) { newLength.value = b; addRest.value = false }
+function setSelectedLength(b: number) { notes.value = notes.value.map((x, i) => (i === selected.value ? { ...x, b } : x)) }
 function nudge(d: number) {
   notes.value = notes.value.map((x, i) => (i === selected.value && x.m !== null
     ? { ...x, m: Math.min(props.rules.highest, Math.max(props.rules.lowest, x.m + d)) } : x))
 }
-/** The selected note becomes a rest (same length); with nothing selected, a rest is added at the end. */
-function addRest() {
-  if (selNote.value) {
-    notes.value = notes.value.map((x, i) => (i === selected.value ? { m: null, b: x.b } : x))
-    return
-  }
-  notes.value = [...notes.value, { m: null, b: newLength.value }]
-  selected.value = notes.value.length - 1
+function toRest() { notes.value = notes.value.map((x, i) => (i === selected.value ? { m: null, b: x.b } : x)) }
+/** A rest becomes a note at the pitch of the note before it (or B4), ready to be moved. */
+function toNote() {
+  const before = notes.value.slice(0, selected.value).reverse().find((x) => x.m !== null)
+  const m = before?.m ?? 71
+  notes.value = notes.value.map((x, i) => (i === selected.value ? { m, b: x.b } : x))
 }
 function remove() {
   notes.value = notes.value.filter((_, i) => i !== selected.value)
-  selected.value = Math.min(selected.value, notes.value.length - 1)
+  selected.value = -1    // back to adding
 }
 function clear() { notes.value = []; selected.value = -1; tuneId.value = undefined }
 
@@ -192,9 +214,16 @@ onBeforeUnmount(() => playback.value?.stop())
 .composer { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); }
 .composer_head { display: flex; align-items: center; gap: 10px; }
 .composer_head h2 { flex: 1; }
-.length_caption { width: 100%; order: 2; display: flex; align-items: center; gap: 4px; font-size: 0.8rem; color: var(--text-muted); margin-top: -4px; }
-.length_caption :deep(svg) { width: 14px; height: 18px; }
-.tools { order: 1; }
+.caption { width: 100%; margin: 0; font-size: 0.8rem; color: var(--text-muted); }
+.seg_rest { font-size: 1.15rem; min-width: 38px; }
+/* the length's name above its icon: ⅛ ¼ ⅜ ½ 1 */
+.seg .seg_btn { display: inline-flex; flex-direction: column; align-items: center; gap: 0; padding: 3px 8px 4px; line-height: 1; }
+.seg_label { font-size: 0.68rem; font-weight: 700; opacity: 0.85; margin-bottom: 1px; }
+.editbar { display: grid; gap: 8px; background: var(--surface-2); border: 1px solid var(--accent); border-radius: var(--radius); padding: 10px; }
+.editbar_head { display: flex; align-items: center; gap: 6px; }
+.editbar_head .muted { flex: 1; color: var(--text-muted); font-size: 0.85rem; }
+.editbar_row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.tool_danger { color: var(--bad); }
 .composer_head h2 { margin: 0; font-size: 1.25rem; }
 .count { color: var(--bad); font-weight: 700; }
 .count_ok { color: var(--good); }
