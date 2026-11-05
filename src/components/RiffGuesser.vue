@@ -12,6 +12,7 @@
           <dt>?</dt><dd>An empty slot. Tap the staff above it to put a note there; tap again to move it.</dd>
           <dt>▲♯ ▼♭</dt><dd>Move the selected note up or down a half step (sharps and flats).</dd>
           <dt>▶ My</dt><dd>Play your guess with the riff's rhythm, to compare by ear.</dd>
+          <dt>Clear</dt><dd>Empty your guess notes. Known (green) notes stay.</dd>
           <dt>Guess!</dt><dd>Check it. Every note gets a coloured dot.</dd>
         </dl>
         <h3>The dots</h3>
@@ -60,6 +61,7 @@
         <button type="button" class="tool" :disabled="!editable" @click="nudge(1)">▲ ♯</button>
         <button type="button" class="tool" :disabled="!editable" @click="nudge(-1)">▼ ♭</button>
         <button type="button" class="tool" :disabled="!slots.length" @click="playGuess">▶ My guess</button>
+        <button type="button" class="tool" :disabled="!canClear" title="Empty your guess notes (known green notes stay)" @click="clearGuess">Clear</button>
         <button v-if="me.learner" type="button" class="tool tool_learn" :disabled="selected < 0" @click="hearOne">
           👂 {{ selected < 0 ? 'Tap a note, then hear it' : `Hear note ${selected + 1}` }}
         </button>
@@ -161,6 +163,13 @@ function hearOne() {
   if (m === undefined) return
   playback.value?.stop()
   play([{ m, b: 1.5 }], props.instrument, 90)
+}
+
+/** Empty every guessed note the player could still change (the known ones stay). */
+const canClear = computed(() => slots.value.some((n, i) => n.m !== null && props.round.revealed[i] == null))
+function clearGuess() {
+  slots.value = slots.value.map((n, i) => (props.round.revealed[i] == null ? { m: null, b: n.b } : n))
+  selected.value = -1
 }
 
 function nudge(d: number) {

@@ -15,7 +15,7 @@
           note</b>, or 🗑 Delete. Tap <b>✓ Done</b> to go back to adding.</p>
         <h3>Other buttons</h3>
         <dl>
-          <dt>Clear</dt><dd>Start over.</dd>
+          <dt>🗑 Clear</dt><dd>Start over. You get a few seconds to undo it.</dd>
           <dt>▶</dt><dd>Hear your riff. Tempo sets how fast.</dd>
           <dt>🎙</dt><dd><b>Play it in:</b> sing, whistle or play into the phone, one note at a time, and it writes the notes down.</dd>
           <dt>📚</dt><dd><b>Famous tunes:</b> use a piece of a well-known tune (easier to guess, so half points).</dd>
@@ -55,7 +55,6 @@
     <div v-else-if="!editing" class="addhint">
       <span class="caption">{{ sounding >= rules.maxNotes ? `The riff is full (${rules.maxNotes} notes). Tap a note to change it.`
         : 'Tap the staff at + to add a note. Tap a note to change it.' }}</span>
-      <button type="button" class="tool" title="Start over" :disabled="!notes.length" @click="clear">Clear</button>
     </div>
 
     <div v-else class="notebox editbar" role="toolbar" aria-label="Edit the selected note">
@@ -88,6 +87,8 @@
       <button type="button" class="btn" :disabled="!sounding" @click="togglePlay">{{ playback ? '■ Stop' : '▶ Play' }}</button>
       <MicRecorder :bpm="bpm" :lowest="rules.lowest" :highest="rules.highest" :max-notes="rules.maxNotes" @notes="fromMic" />
       <button type="button" class="btn btn_ghost" @click="showLibrary = !showLibrary">📚 Famous tunes</button>
+      <button v-if="undoNotes" type="button" class="btn btn_undo" @click="undoClear">↶ Undo clear</button>
+      <button v-else type="button" class="btn btn_ghost" :disabled="!notes.length" @click="clear">🗑 Clear</button>
     </div>
     <label class="tempo">Tempo <input v-model.number="bpm" type="range" min="60" max="160" step="5" /> {{ bpm }} bpm</label>
 
@@ -203,7 +204,21 @@ function remove() {
   notes.value = notes.value.filter((_, i) => i !== selected.value)
   selected.value = -1    // back to adding
 }
-function clear() { notes.value = []; selected.value = -1; tuneId.value = undefined }
+/** Clear the whole riff, with a few seconds to undo it (instead of an "are you sure?" box). */
+const undoNotes = ref<{ notes: Note[]; tuneId: string | undefined } | null>(null)
+let undoTimer = 0
+function clear() {
+  undoNotes.value = { notes: notes.value, tuneId: tuneId.value }
+  notes.value = []; selected.value = -1; addPitch.value = null; tuneId.value = undefined
+  clearTimeout(undoTimer)
+  undoTimer = window.setTimeout(() => { undoNotes.value = null }, 8000)
+}
+function undoClear() {
+  if (!undoNotes.value) return
+  notes.value = undoNotes.value.notes; tuneId.value = undoNotes.value.tuneId
+  undoNotes.value = null
+  clearTimeout(undoTimer)
+}
 
 function togglePlay() {
   if (playback.value) { playback.value.stop(); playback.value = null; return }
@@ -239,6 +254,7 @@ onBeforeUnmount(() => playback.value?.stop())
 .notebox_lengths { justify-self: start; }
 .addhint { display: flex; align-items: center; gap: 10px; }
 .addhint .caption { flex: 1; width: auto; }
+.btn_undo { border-color: var(--accent); color: var(--accent); }
 .editbar_head { display: flex; align-items: center; gap: 6px; }
 .editbar_head .muted { flex: 1; color: var(--text-muted); font-size: 0.85rem; }
 .editbar_row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
