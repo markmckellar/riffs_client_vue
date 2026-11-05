@@ -241,20 +241,6 @@ onBeforeUnmount(() => playback.value?.stop())
 .notebox { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; background: var(--surface-2); border: 1px solid var(--accent); border-radius: var(--radius); padding: 10px; margin-top: -6px; }
 .notebox_head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .notebox_x { background: none; border: 0; color: var(--text-muted); font-size: 1.1rem; min-width: 36px; min-height: 32px; cursor: pointer; }
-/* keyboard-style keys; they share the box's width, so the row always fits (bigger text, narrow phones) */
-.keys { display: flex; gap: 4px; width: 100%; max-width: 440px; min-width: 0; }
-.key {
-  flex: 1 1 0; min-width: 0; overflow: hidden; display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 1px; line-height: 1; padding: 4px 2px 5px; min-height: 48px; font: inherit; font-size: 0.85rem; font-weight: 700;
-  color: var(--text); background: #3a3270; border: 1px solid #4a4290; border-bottom: 3px solid #1d1840; border-radius: 7px; cursor: pointer;
-}
-.key:active:not(:disabled) { transform: translateY(2px); border-bottom-width: 1px; }
-.key:disabled { opacity: 0.4; cursor: default; }
-.key_on { background: var(--accent); color: var(--accent-contrast); border-color: #ffe08a; border-bottom-color: #b08a14; }
-.key_space { flex-grow: 2.2; }
-.key_back, .key_del { flex-grow: 1.2; font-size: 1.05rem; }
-.key_del { color: var(--bad); }
-.key_label { font-size: 0.66rem; font-weight: 700; opacity: 0.85; max-width: 100%; overflow: hidden; white-space: nowrap; }
 .btn_undo { border-color: var(--accent); color: var(--accent); }
 .editbar_head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .editbar_gap { flex: 1; }

@@ -62,6 +62,7 @@
           <!-- feedback from the last guess -->
           <g v-if="marks && marks[i]">
             <circle :cx="colX(i)" :cy="height - 14" r="7" :class="'mark_' + marks[i]" />
+            <circle v-if="lengthMarks && lengthMarks[i] === 'wrong'" :cx="colX(i)" :cy="height - 14" r="11" class="mark_length" />
             <text v-if="markHints && markHints[i]" :x="colX(i)" :y="height - 10" class="mark_arrow">{{ markHints[i] === 'up' ? '↑' : '↓' }}</text>
           </g>
         </g>
@@ -96,6 +97,8 @@ const props = withDefaults(defineProps<{
   /** guess mode: notes the player already knows (shown green, can't be changed) */
   locked?: (number | null)[]
   marks?: Mark[] | null
+  /** per note: 'wrong' when the guessed length was wrong (a red ring around the dot) */
+  lengthMarks?: (string | null)[] | null
   markHints?: (string | null)[] | null
   highlight?: number
   maxNotes?: number
@@ -116,7 +119,7 @@ const props = withDefaults(defineProps<{
   /** learner mode: pitches the selected note could still be, from the feedback so far */
   possible?: number[] | null
 }>(), {
-  mode: 'compose', locked: () => [], marks: null, markHints: null, highlight: -1, maxNotes: 8, maxRests: 2,
+  mode: 'compose', locked: () => [], marks: null, lengthMarks: null, markHints: null, highlight: -1, maxNotes: 8, maxRests: 2,
   lowest: 55, highest: 84, newLength: 1, newRest: false, ghost: null, instrument: 'piano', plainRhythm: false, contour: null, possible: null,
 })
 const emit = defineEmits<{ 'update:modelValue': [Note[]]; add: [pitch: number]; cancel: [] }>()
@@ -256,6 +259,7 @@ function onTap(e: PointerEvent) {
 .mark_octave { fill: var(--accent-2); }
 .mark_close { fill: var(--accent); }
 .mark_miss { fill: var(--bad); }
+.mark_length { fill: none; stroke: var(--bad); stroke-width: 2.5; stroke-dasharray: 3 2; }
 .mark_arrow { fill: #1b1530; font-size: 12px; font-weight: 800; text-anchor: middle; }
 .staff_possible rect { fill: var(--good); opacity: 0.35; }
 .staff_possible rect.staff_possible_sharp { fill: none; stroke: var(--good); stroke-width: 1.5; stroke-dasharray: 3 2; opacity: 0.8; }

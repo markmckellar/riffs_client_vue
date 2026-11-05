@@ -16,8 +16,8 @@ const emit = defineEmits<{ up: []; down: [] }>()
 <style scoped>
 .steps { display: inline-flex; flex-direction: column; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; flex: none; }
 .steps_btn {
-  font: inherit; font-size: 0.8rem; line-height: 1; background: var(--surface-2); color: var(--text); border: 0;
-  min-width: 46px; height: 25px; padding: 0 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 3px;
+  font: inherit; font-size: 1.05rem; line-height: 1; background: var(--surface-2); color: var(--text); border: 0;
+  min-width: 60px; height: 34px; padding: 0 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 3px;
 }
 .steps_btn small { font-size: 0.75rem; opacity: 0.8; }
 .steps_up { border-bottom: 1px solid var(--border); }

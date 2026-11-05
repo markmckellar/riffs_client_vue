@@ -43,11 +43,12 @@ export const LENGTHS: { beats: number; label: string; long: string; frac: string
   { beats: 1, label: 'Quarter note', long: '1 beat', frac: '¼' },
   { beats: 1.5, label: 'Dotted quarter', long: '1½ beats (the dot adds half)', frac: '⅜' },
   { beats: 2, label: 'Half note', long: '2 beats', frac: '½' },
+  { beats: 3, label: 'Dotted half', long: '3 beats (the dot adds half)', frac: '¾' },
   { beats: 4, label: 'Whole note', long: '4 beats, a whole bar', frac: '1' },
 ]
 
 /** The nearest allowed length to a measured number of beats. */
-export function quantizeBeats(beats: number, allowed = [0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4]): number {
+export function quantizeBeats(beats: number, allowed = [0.5, 1, 1.5, 2, 3, 4]): number {
   let best = allowed[0]
   for (const a of allowed) if (Math.abs(Math.log(a / beats)) < Math.abs(Math.log(best / beats))) best = a
   return best

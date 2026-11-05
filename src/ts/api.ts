@@ -13,13 +13,16 @@ export interface Player {
   /** strings left on this player's guitar, for the whole game */
   strings: number; points: number; hints: number; extraStrings: number
 }
-export interface Guess { notes: number[]; marks: Mark[]; hints: (string | null)[]; correct: boolean; at: number }
+/** beats: the lengths guessed; lengths: per note 'ok' / 'wrong' (older guesses have neither) */
+export interface Guess { notes: number[]; beats?: number[]; marks: Mark[]; hints: (string | null)[]; lengths?: ('ok' | 'wrong')[]; correct: boolean; at: number }
 export type Mark = 'exact' | 'octave' | 'close' | 'miss'
 export interface Round {
   number: number; composer: string; listener: string; role: 'composer' | 'listener'
   phase: 'composing' | 'guessing' | 'solved' | 'failed'
   /** wrong guesses on this riff (each snapped one of the listener's strings) */
   length: number; wrong: number; revealed: (number | null)[]
+  /** per note: the length the listener knows (beats), else null */
+  revealedBeats: (number | null)[]
   guesses: Guess[]; hintsUsed: number; freeNotes: number; learner: boolean; fromLibrary: boolean
   riff?: Note[]; score?: number; tier?: string; tuneId?: string | null
 }
@@ -69,7 +72,7 @@ export const api = {
   game: (id: string) => call<GameView>('GET', `api/games/${id}`),
   start: (opponentId?: string) => call<GameView>('POST', 'api/games', { opponentId: opponentId ?? null }),
   sendRiff: (id: string, notes: Note[], tuneId?: string) => call<GameView>('POST', `api/games/${id}/riff`, { notes, tuneId: tuneId ?? null }),
-  guess: (id: string, notes: number[]) => call<GameView>('POST', `api/games/${id}/guess`, { notes }),
+  guess: (id: string, notes: number[], beats: number[]) => call<GameView>('POST', `api/games/${id}/guess`, { notes, beats }),
   hint: (id: string) => call<GameView>('POST', `api/games/${id}/hint`),
   extraString: (id: string) => call<GameView>('POST', `api/games/${id}/extra-string`),
   resign: (id: string) => call<GameView>('POST', `api/games/${id}/resign`),

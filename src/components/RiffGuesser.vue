@@ -13,7 +13,9 @@
             one); it then moves on to the next slot. ‹ › change the octave. You can also tap the staff.</dd>
           <dt>?</dt><dd>An empty slot. Tap it to select it.</dd>
 
-          <dt>▶ My</dt><dd>Play your guess with the riff's rhythm, to compare by ear.</dd>
+          <dt>⅛…1</dt><dd><b>Lengths count:</b> pick a length, then a piano key. To change a note's length, tap the note,
+            then a length.</dd>
+          <dt>▶ My</dt><dd>Play your guess (your notes and lengths), to compare by ear.</dd>
           <dt>Del</dt><dd>Empty the selected note (tap it first).</dd>
           <dt>Clear</dt><dd>Empty all your guess notes. Known (green) notes stay.</dd>
           <dt>Guess!</dt><dd>Check it. Every note gets a coloured dot.</dd>
@@ -54,11 +56,18 @@
     </div>
 
 
-    <StaffEditor v-model="slots" v-model:selected="selected" mode="guess" plain-rhythm :locked="round.revealed"
-      :marks="lastGuess?.marks" :mark-hints="lastGuess?.hints" :highlight="playingSlot"
+    <StaffEditor v-model="slots" v-model:selected="selected" mode="guess" :locked="round.revealed"
+      :marks="lastGuess?.marks" :mark-hints="lastGuess?.hints" :length-marks="lastGuess?.lengths" :highlight="playingSlot"
       :contour="me.learner ? contour : null" :possible="me.learner ? possible : null"
       :lowest="rules.lowest" :highest="rules.highest" :instrument="instrument" />
 
+    <!-- note lengths: pick one, then a piano key; with a slot selected, a length key changes that slot's length -->
+    <div class="keys guess_lengths" role="group" aria-label="Note lengths">
+      <button v-for="l in LENGTHS" :key="l.beats" type="button" :title="l.label + ': ' + l.long"
+        :aria-pressed="shownLength === l.beats" :class="['key', { key_on: shownLength === l.beats }]" @click="pickLength(l.beats)">
+        <span class="key_label">{{ l.frac }}</span><NoteGlyph :beats="l.beats" />
+      </button>
+    </div>
     <!-- the note keyboard: a piano. A key fills the selected slot (or the first empty one) and moves on, like typing. -->
     <PianoKeys v-model:start="pianoStart" :lowest="rules.lowest" :highest="rules.highest"
       :current="selected >= 0 ? slots[selected]?.m ?? null : null" :instrument="instrument" @press="onPiano" />
@@ -92,6 +101,7 @@
             <dt><i class="dot mark_octave"></i></dt><dd>Right note name, wrong octave.</dd>
             <dt><i class="dot mark_close"></i></dt><dd><b>Close</b> (1–2 half steps). The arrow says higher ↑ or lower ↓.</dd>
             <dt><i class="dot mark_miss"></i></dt><dd>Miss.</dd>
+            <dt><i class="ring"></i></dt><dd>A red ring: the note's <b>length</b> is wrong.</dd>
           </dl>
         </template>
       </HelpSheet>
@@ -118,9 +128,11 @@ import StaffEditor from './StaffEditor.vue'
 import GuessHistory from './GuessHistory.vue'
 import HelpSheet from './HelpSheet.vue'
 import PianoKeys from './PianoKeys.vue'
+import NoteGlyph from './NoteGlyph.vue'
+import { LENGTHS } from '../ts/music'
 
 const props = defineProps<{ round: Round; rules: Rules; instrument: string; me: Player; busy: boolean }>()
-const emit = defineEmits<{ guess: [number[]]; hint: []; extraString: []; learner: [boolean] }>()
+const emit = defineEmits<{ guess: [notes: number[], beats: number[]]; hint: []; extraString: []; learner: [boolean] }>()
 const FREE_EVERY = 2
 
 const slots = ref<Note[]>([])
@@ -137,8 +149,11 @@ const editable = computed(() => selected.value >= 0 && props.round.revealed[sele
 
 // start each guess from what's known, plus the last guess's notes to edit
 // (a string key: a new array each time would count as a change on every reload and wipe the notes being entered)
-watch(() => `${props.round.number}|${props.round.guesses.length}|${props.round.revealed.join()}`, () => {
-  slots.value = props.round.revealed.map((r, i) => ({ m: r ?? lastGuess.value?.notes[i] ?? null, b: 1 }))
+watch(() => `${props.round.number}|${props.round.guesses.length}|${props.round.revealed.join()}|${(props.round.revealedBeats ?? []).join()}`, () => {
+  slots.value = props.round.revealed.map((r, i) => ({
+    m: r ?? lastGuess.value?.notes[i] ?? null,
+    b: props.round.revealedBeats?.[i] ?? lastGuess.value?.beats?.[i] ?? 1,
+  }))
 }, { immediate: true })
 
 // ---- learner mode helpers (the phone already has the riff's notes, to play them)
@@ -203,10 +218,23 @@ function targetSlot(): number {
   if (s >= 0 && props.round.revealed[s] == null) return s
   return slots.value.findIndex((n, i) => n.m === null && props.round.revealed[i] == null)
 }
+// ---- lengths
+/** the length the next piano key gives a note (the lit key) */
+const guessLength = ref(1)
+const knownBeats = (i: number) => props.round.revealedBeats?.[i] ?? null
+/** the lit length key: the selected note's length, else the one chosen for the next note */
+const shownLength = computed(() => (selected.value >= 0 && slots.value[selected.value]?.m != null ? slots.value[selected.value].b : guessLength.value))
+function pickLength(b: number) {
+  guessLength.value = b
+  const s = selected.value
+  if (s >= 0 && knownBeats(s) == null && slots.value[s]?.m != null)
+    slots.value = slots.value.map((n, i) => (i === s ? { ...n, b } : n))
+}
+
 function onPiano(m: number) {
   const t = targetSlot()
   if (t < 0) return    // every note is filled in: select one to change it
-  slots.value = slots.value.map((n, i) => (i === t ? { ...n, m } : n))
+  slots.value = slots.value.map((n, i) => (i === t ? { m, b: knownBeats(i) ?? guessLength.value } : n))
   // move on to the next empty slot, like typing; stay put if there is none
   const next = slots.value.findIndex((n, i) => i > t && n.m === null && props.round.revealed[i] == null)
   const anyEmpty = slots.value.findIndex((n, i) => n.m === null && props.round.revealed[i] == null)
@@ -242,17 +270,15 @@ function togglePlay() {
 
 function playGuess() {
   playback.value?.stop()
-  // the guess with the riff's rhythm, so it can be compared by ear
-  const rhythm = (props.round.riff ?? []).filter((n) => n.m !== null).map((n) => n.b)
-  const p = play(slots.value.filter((n) => n.m !== null).map((n, i) => ({ m: n.m, b: rhythm[i] ?? 1 })), props.instrument, bpm.value,
-    (i) => { playingSlot.value = i })
+  // your guess, with your lengths (they count too)
+  const p = play(slots.value.filter((n) => n.m !== null), props.instrument, bpm.value, (i) => { playingSlot.value = i })
   playback.value = p
   void p.done.then(() => { if (playback.value === p) playback.value = null })
 }
 
 function submit() {
   playback.value?.stop()
-  emit('guess', slots.value.map((n) => n.m as number))
+  emit('guess', slots.value.map((n) => n.m as number), slots.value.map((n) => n.b))
 }
 onBeforeUnmount(() => playback.value?.stop())
 </script>
@@ -277,6 +303,8 @@ onBeforeUnmount(() => playback.value?.stop())
 .strings_line { margin: 0; font-size: 0.85rem; color: var(--text-muted); text-align: center; }
 .strings_line b { color: var(--text); }
 .strings_low, .strings_low b { color: var(--accent); }
+.ring { display: inline-block; width: 16px; height: 16px; border-radius: 50%; border: 2px dashed var(--bad); }
+.guess_lengths { margin-bottom: -4px; }
 .token_row { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
 .my_guess { min-height: 40px; }
 .legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 0.75rem; color: var(--text-muted); }

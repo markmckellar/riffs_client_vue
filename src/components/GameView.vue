@@ -132,7 +132,7 @@ async function act(f: () => Promise<GameView>) {
   try { game.value = await f() } catch (e) { error.value = (e as Error).message } finally { busy.value = false }
 }
 const sendRiff = (notes: Note[], tuneId?: string) => act(() => api.sendRiff(props.gameId, notes, tuneId))
-const guess = (notes: number[]) => act(() => api.guess(props.gameId, notes))
+const guess = (notes: number[], beats: number[]) => act(() => api.guess(props.gameId, notes, beats))
 function resign() { if (confirm('Resign this game?')) void act(() => api.resign(props.gameId)) }
 
 /** How the game ended: who snapped their last string, or who resigned. */
