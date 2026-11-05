@@ -3,8 +3,8 @@
     <header class="composer_head">
       <h2>Write a riff</h2>
       <HelpSheet title="How to write a riff" storage-key="riffs_help_compose">
-        <p><b>To add:</b> pick a note length (or 𝄽 for a rest) in the bar under the staff, then tap the staff at
-          <b>+</b>. Higher on the staff = a higher note. Its name (C, D, E…) shows above the staff.</p>
+        <p><b>To add:</b> tap the staff at <b>+</b>, at the height of the note you want (higher = a higher note; its
+          name shows above the staff). Then pick its length in the box under the staff, or 𝄽 for a rest.</p>
         <dl>
           <template v-for="l in LENGTHS" :key="l.beats"><dt>{{ l.frac }}&nbsp;<NoteGlyph :beats="l.beats" /></dt><dd><b>{{ l.label }}</b>: {{ l.long }}</dd></template>
           <dt>𝄽</dt><dd><b>Rest</b>: a silence (up to {{ rules.maxRests }} per riff).</dd>
@@ -31,23 +31,34 @@
 
     <StaffEditor v-model="notes" v-model:selected="selected" mode="compose" :highlight="playing"
       :max-notes="rules.maxNotes" :max-rests="rules.maxRests" :lowest="rules.lowest" :highest="rules.highest"
-      :new-length="newLength" :new-rest="addRest" :instrument="instrument" />
+      :new-length="newLength" :ghost="addPitch" :instrument="instrument" @add="onAdd" @cancel="addPitch = null" />
 
-    <!-- Adding (nothing selected): pick what the next tap on + adds. Editing (a note tapped): change that note. -->
-    <div v-if="!editing" class="toolbar" role="toolbar" aria-label="Add notes">
-      <div class="seg" role="radiogroup" aria-label="What to add">
-        <button v-for="l in LENGTHS" :key="l.beats" type="button" role="radio" :aria-checked="!addRest && newLength === l.beats"
-          :title="l.label" :class="['seg_btn', { seg_on: !addRest && newLength === l.beats }]" @click="pickLength(l.beats)">
+    <!-- Under the staff: what to add (after a tap at +), the note being edited (after a tap on a note), or a hint. -->
+    <div v-if="addPitch !== null" class="notebox" role="dialog" aria-label="Choose the new note's length">
+      <div class="notebox_head">
+        <strong>Add {{ noteName(addPitch) }} as:</strong>
+        <button type="button" class="notebox_x" aria-label="Cancel" @click="addPitch = null">✕</button>
+      </div>
+      <div class="seg notebox_lengths" role="group" aria-label="Length">
+        <button v-for="l in LENGTHS" :key="l.beats" type="button" :title="l.label + ': ' + l.long" :disabled="sounding >= rules.maxNotes"
+          :class="['seg_btn', { seg_on: newLength === l.beats }]" @click="addAs(l.beats, false)">
           <span class="seg_label">{{ l.frac }}</span><NoteGlyph :beats="l.beats" />
         </button>
-        <button type="button" role="radio" :aria-checked="addRest" title="Rest (a silence)" :disabled="rests >= rules.maxRests && !addRest"
-          :class="['seg_btn', 'seg_rest', { seg_on: addRest }]" @click="addRest = true"><span class="seg_label">rest</span>𝄽</button>
+        <button type="button" title="Rest: a silence" :disabled="rests >= rules.maxRests" :class="['seg_btn', 'seg_rest']" @click="addAs(newLength, true)">
+          <span class="seg_label">rest</span>𝄽
+        </button>
       </div>
-      <button type="button" class="tool" title="Start over" :disabled="!notes.length" @click="clear">Clear</button>
-      <p class="caption" aria-live="polite">{{ addCaption }}</p>
+      <p class="caption">{{ sounding >= rules.maxNotes ? `The riff has ${rules.maxNotes} notes, the most; only a rest can be added.`
+        : 'Tap a length. To pick a different note, tap the staff at + again.' }}</p>
     </div>
 
-    <div v-else class="editbar" role="toolbar" aria-label="Edit the selected note">
+    <div v-else-if="!editing" class="addhint">
+      <span class="caption">{{ sounding >= rules.maxNotes ? `The riff is full (${rules.maxNotes} notes). Tap a note to change it.`
+        : 'Tap the staff at + to add a note. Tap a note to change it.' }}</span>
+      <button type="button" class="tool" title="Start over" :disabled="!notes.length" @click="clear">Clear</button>
+    </div>
+
+    <div v-else class="notebox editbar" role="toolbar" aria-label="Edit the selected note">
       <div class="editbar_head">
         <strong>Editing #{{ selected + 1 }}: {{ selNote ? noteName(selNote.m!) : 'rest' }}</strong>
         <span class="muted">· {{ lengthOf(notes[selected].b).label.toLowerCase() }}</span>
@@ -129,15 +140,8 @@ const evaluation = ref<Evaluation | null>(null)
 const sending = ref(false)
 
 const sounding = computed(() => notes.value.filter((n) => n.m !== null).length)
-const addRest = ref(false)    // the rest tool is chosen in the Add palette
 const editing = computed(() => selected.value >= 0 && selected.value < notes.value.length)
 function lengthOf(b: number) { return LENGTHS.find((l) => l.beats === b) ?? { beats: b, label: b + ' beats', long: b + ' beats' } }
-const addCaption = computed(() => {
-  if (addRest.value) return rests.value >= props.rules.maxRests ? `That's the most rests (${props.rules.maxRests}).` : `Tap + to add a rest (a silence, ${lengthOf(newLength.value).long}).`
-  if (sounding.value >= props.rules.maxNotes) return `The riff is full (${props.rules.maxNotes} notes). Tap a note to change it.`
-  const l = lengthOf(newLength.value)
-  return `Tap the staff at + to add a ${l.label.toLowerCase()} (${l.long}). Tap a note to change it.`
-})
 const rests = computed(() => notes.value.length - sounding.value)
 const countOk = computed(() => sounding.value >= props.rules.minNotes && sounding.value <= props.rules.maxNotes)
 const selNote = computed(() => { const n = notes.value[selected.value]; return n && n.m !== null ? n : null })
@@ -172,7 +176,17 @@ watch(notes, (n) => {
   }, 300)
 }, { immediate: true, deep: true })
 
-function pickLength(b: number) { newLength.value = b; addRest.value = false }
+/** A tap at +: remember the pitch (shown as a ghost note) and ask which length. */
+const addPitch = ref<number | null>(null)
+function onAdd(pitch: number) { addPitch.value = pitch }
+/** Add the note (or a rest) with that length; the length is remembered and highlighted next time. */
+function addAs(b: number, rest: boolean) {
+  if (addPitch.value === null) return
+  notes.value = [...notes.value, { m: rest ? null : addPitch.value, b }]
+  if (!rest) newLength.value = b
+  addPitch.value = null
+}
+watch(selected, (i) => { if (i >= 0) addPitch.value = null })    // tapping a note to edit it cancels adding
 function setSelectedLength(b: number) { notes.value = notes.value.map((x, i) => (i === selected.value ? { ...x, b } : x)) }
 function nudge(d: number) {
   notes.value = notes.value.map((x, i) => (i === selected.value && x.m !== null
@@ -219,7 +233,12 @@ onBeforeUnmount(() => playback.value?.stop())
 /* the length's name above its icon: ⅛ ¼ ⅜ ½ 1 */
 .seg .seg_btn { display: inline-flex; flex-direction: column; align-items: center; gap: 0; padding: 3px 8px 4px; line-height: 1; }
 .seg_label { font-size: 0.68rem; font-weight: 700; opacity: 0.85; margin-bottom: 1px; }
-.editbar { display: grid; gap: 8px; background: var(--surface-2); border: 1px solid var(--accent); border-radius: var(--radius); padding: 10px; }
+.notebox { display: grid; gap: 8px; background: var(--surface-2); border: 1px solid var(--accent); border-radius: var(--radius); padding: 10px; margin-top: -6px; }
+.notebox_head { display: flex; align-items: center; justify-content: space-between; }
+.notebox_x { background: none; border: 0; color: var(--text-muted); font-size: 1.1rem; min-width: 36px; min-height: 32px; cursor: pointer; }
+.notebox_lengths { justify-self: start; }
+.addhint { display: flex; align-items: center; gap: 10px; }
+.addhint .caption { flex: 1; width: auto; }
 .editbar_head { display: flex; align-items: center; gap: 6px; }
 .editbar_head .muted { flex: 1; color: var(--text-muted); font-size: 0.85rem; }
 .editbar_row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }

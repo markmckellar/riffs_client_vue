@@ -69,7 +69,14 @@
         <!-- where the next note goes -->
         <g v-if="canAppend" class="staff_add">
           <rect :x="colX(slots.length) - COL / 2 + 4" y="10" :width="COL - 8" :height="height - 20" rx="8" />
-          <text :x="colX(slots.length)" :y="y(6) + 6">{{ newRest ? '+𝄽' : '+' }}</text>
+          <text v-if="ghost == null" :x="colX(slots.length)" :y="y(6) + 6">+</text>
+        </g>
+        <!-- the note being added, before its length is chosen -->
+        <g v-if="ghost != null && canAppend" class="staff_ghost">
+          <line v-for="l in ledgers(stepOf(ghost).step)" :key="'gl' + l" :x1="colX(slots.length) - 13" :x2="colX(slots.length) + 13" :y1="y(l)" :y2="y(l)" class="staff_line" />
+          <text v-if="stepOf(ghost).sharp" :x="colX(slots.length) - 19" :y="y(stepOf(ghost).step) + 5" class="staff_sharp">♯</text>
+          <ellipse :cx="colX(slots.length)" :cy="y(stepOf(ghost).step)" rx="7.5" ry="5.5" :transform="`rotate(-20 ${colX(slots.length)} ${y(stepOf(ghost).step)})`" />
+          <text :x="colX(slots.length)" :y="NAME_ROW" class="staff_ghost_name">{{ letterOf(ghost) }}<tspan class="staff_names_oct" dy="2">{{ octaveOf(ghost) }}</tspan></text>
         </g>
       </svg>
     </div>
@@ -99,6 +106,8 @@ const props = withDefaults(defineProps<{
   newLength?: number
   /** compose mode: tapping + adds a rest instead of a note */
   newRest?: boolean
+  /** compose mode: a faint note at + where the player tapped, while they choose its length */
+  ghost?: number | null
   instrument?: string
   /** guess mode: draw every note as a quarter (the rhythm isn't guessed) */
   plainRhythm?: boolean
@@ -108,9 +117,9 @@ const props = withDefaults(defineProps<{
   possible?: number[] | null
 }>(), {
   mode: 'compose', locked: () => [], marks: null, markHints: null, highlight: -1, maxNotes: 8, maxRests: 2,
-  lowest: 55, highest: 84, newLength: 1, newRest: false, instrument: 'piano', plainRhythm: false, contour: null, possible: null,
+  lowest: 55, highest: 84, newLength: 1, newRest: false, ghost: null, instrument: 'piano', plainRhythm: false, contour: null, possible: null,
 })
-const emit = defineEmits<{ 'update:modelValue': [Note[]] }>()
+const emit = defineEmits<{ 'update:modelValue': [Note[]]; add: [pitch: number]; cancel: [] }>()
 const selected = defineModel<number>('selected', { default: -1 })
 
 const COL = 42
@@ -124,7 +133,7 @@ const editable = computed(() => props.mode !== 'view')
 const soundingCount = computed(() => slots.value.filter((n) => n.m !== null).length)
 const restCount = computed(() => slots.value.length - soundingCount.value)
 const canAppend = computed(() => props.mode === 'compose'
-  && (props.newRest ? restCount.value < props.maxRests : soundingCount.value < props.maxNotes))
+  && (soundingCount.value < props.maxNotes || restCount.value < props.maxRests))
 const width = computed(() => LEFT + COL * (slots.value.length + (canAppend.value ? 1 : 0)) + 12)
 // above the staff: a row of note names, and in learner mode a row of shape arrows under it
 const NAME_ROW = 18
@@ -198,17 +207,13 @@ function onTap(e: PointerEvent) {
     notes[col] = { m: pitch, b: notes[col].b }
     selected.value = col
   } else if (canAppend.value && col === notes.length) {
-    // adding: a note at the tapped pitch, or a rest; nothing stays selected, so the next tap adds the next one
-    if (props.newRest) {
-      notes.push({ m: null, b: props.newLength })
-      selected.value = -1
-      emit('update:modelValue', notes)
-      return
-    }
-    notes.push({ m: pitch, b: props.newLength })
-    selected.value = props.mode === 'compose' ? -1 : notes.length - 1
+    // adding: the composer asks which length (a ghost note shows where); nothing is selected meanwhile
+    selected.value = -1
+    blip(pitch, props.instrument)
+    emit('add', pitch)
+    return
   } else {
-    if (props.mode === 'compose') selected.value = -1    // a tap on empty space stops editing
+    if (props.mode === 'compose') { selected.value = -1; emit('cancel') }    // a tap on empty space: stop
     return
   }
   blip(pitch, props.instrument)
@@ -243,6 +248,9 @@ function onTap(e: PointerEvent) {
 .staff_playing { fill: var(--accent); opacity: 0.25; }
 .staff_selected { fill: var(--accent-2); opacity: 0.14; }
 .staff_add rect { fill: none; stroke: var(--ink-soft); stroke-dasharray: 4 4; opacity: 0.6; }
+.staff_ghost ellipse { fill: #c2410c; opacity: 0.55; }
+.staff_ghost .staff_sharp { fill: #c2410c; }
+.staff_ghost_name { fill: #c2410c; font-size: 15px; font-weight: 800; text-anchor: middle; }
 .staff_add text { fill: var(--ink-soft); font-size: 22px; text-anchor: middle; }
 .mark_exact { fill: var(--good); }
 .mark_octave { fill: var(--accent-2); }
