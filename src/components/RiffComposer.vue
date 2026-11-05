@@ -3,9 +3,9 @@
     <header class="composer_head">
       <h2>Write a riff</h2>
       <HelpSheet title="How to write a riff" storage-key="riffs_help_compose">
-        <p><b>To add:</b> tap the staff at <b>+</b>, at the height of the note you want (higher = a higher note; its
-          name shows above the staff). Then tap its length on the keys under the staff (<b>space</b> adds a rest, <b>⌫</b>
-          removes the last note). ▲ ▼ there move it a half step first (for a sharp ♯).</p>
+        <p><b>To add:</b> the keys under the staff are your keyboard. Tap a length (it lights up), then tap the
+          staff at <b>+</b> at the height of the note you want (higher = a higher note; its name shows above the staff).
+          <b>space</b> adds a rest, <b>⌫</b> removes the last note.</p>
         <dl>
           <template v-for="l in LENGTHS" :key="l.beats"><dt>{{ l.frac }}&nbsp;<NoteGlyph :beats="l.beats" /></dt><dd><b>{{ l.label }}</b>: {{ l.long }}</dd></template>
           <dt>𝄽</dt><dd><b>Rest</b>: a silence (up to {{ rules.maxRests }} per riff).</dd>
@@ -32,63 +32,45 @@
 
     <StaffEditor v-model="notes" v-model:selected="selected" mode="compose" :highlight="playing"
       :max-notes="rules.maxNotes" :max-rests="rules.maxRests" :lowest="rules.lowest" :highest="rules.highest"
-      :new-length="newLength" :ghost="addPitch" :instrument="instrument" @add="onAdd" @cancel="addPitch = null" />
+      :new-length="newLength" :instrument="instrument" @add="addAt" />
 
-    <!-- Under the staff: what to add (after a tap at +), the note being edited (after a tap on a note), or a hint. -->
-    <div v-if="addPitch !== null" class="notebox" role="dialog" aria-label="Choose the new note's length">
-      <div class="notebox_head">
-        <strong class="editbar_title">Add {{ noteName(addPitch) }} as:</strong>
-        <StepButtons @up="nudgeAdd(1)" @down="nudgeAdd(-1)" />
-        <span class="editbar_gap"></span>
-        <button type="button" class="notebox_x" aria-label="Cancel" @click="addPitch = null">✕</button>
+    <!-- The keyboard, always under the staff. Adding: pick a length, tap the staff; space adds a rest; ⌫ removes the
+         last note. Editing (a note tapped): the same keys change that note; space = rest/note; Del deletes it. -->
+    <div :class="['notebox', { editbar: editing }]" role="toolbar" :aria-label="editing ? 'Change the selected note' : 'Note keys'">
+      <div class="editbar_head">
+        <template v-if="editing">
+          <strong class="editbar_title">Edit #{{ selected + 1 }}: {{ selNote ? noteName(selNote.m!) : 'rest' }}</strong>
+          <StepButtons v-if="selNote" @up="nudge(1)" @down="nudge(-1)" />
+          <span class="editbar_gap"></span>
+          <button type="button" class="btn btn_small btn_primary" @click="selected = -1">✓ Done</button>
+        </template>
+        <span v-else class="caption">{{ addCaption }}</span>
       </div>
-      <!-- like a keyboard: note keys, a space bar for a rest, backspace removes the last note -->
       <div class="keys" role="group" aria-label="Note keys">
-        <button v-for="l in LENGTHS" :key="l.beats" type="button" :title="l.label + ': ' + l.long" :disabled="sounding >= rules.maxNotes"
-          :class="['key', { key_on: newLength === l.beats }]" @click="addAs(l.beats, false)">
+        <button v-for="l in LENGTHS" :key="l.beats" type="button" :title="l.label + ': ' + l.long"
+          :aria-pressed="editing ? notes[selected].b === l.beats : newLength === l.beats"
+          :class="['key', { key_on: editing ? notes[selected].b === l.beats : newLength === l.beats }]"
+          @click="editing ? setSelectedLength(l.beats) : (newLength = l.beats)">
           <span class="key_label">{{ l.frac }}</span><NoteGlyph :beats="l.beats" />
         </button>
-        <button type="button" class="key key_space" title="Space: add a rest (a silence)" :disabled="rests >= rules.maxRests" @click="addAs(newLength, true)">
+        <button v-if="!editing" type="button" class="key key_space" title="Space: add a rest (a silence)" :disabled="rests >= rules.maxRests" @click="addRestAtEnd">
           <span class="key_label">rest</span>space
         </button>
-        <button type="button" class="key key_back" title="Backspace: remove the last note" aria-label="Backspace: remove the last note"
-          :disabled="!notes.length" @click="backspace">
-          <span class="key_label">back</span>⌫
-        </button>
-      </div>
-      <p class="caption">{{ sounding >= rules.maxNotes ? `The riff has ${rules.maxNotes} notes, the most; only a rest can be added.`
-        : 'Tap a length. To pick a different note, tap the staff at + again.' }}</p>
-    </div>
-
-    <div v-else-if="!editing" class="addhint">
-      <span class="caption">{{ sounding >= rules.maxNotes ? `The riff is full (${rules.maxNotes} notes). Tap a note to change it.`
-        : 'Tap the staff at + to add a note. Tap a note to change it.' }}</span>
-    </div>
-
-    <div v-else class="notebox editbar" role="toolbar" aria-label="Edit the selected note">
-      <div class="editbar_head">
-        <strong class="editbar_title">Edit #{{ selected + 1 }}: {{ selNote ? noteName(selNote.m!) : 'rest' }}</strong>
-        <StepButtons v-if="selNote" @up="nudge(1)" @down="nudge(-1)" />
-        <span class="editbar_gap"></span>
-        <button type="button" class="btn btn_small btn_primary" @click="selected = -1">✓ Done</button>
-      </div>
-      <!-- the same keys: its length, space = make it a rest (or a note again), Del = delete it -->
-      <div class="keys" role="group" aria-label="Change it">
-        <button v-for="l in LENGTHS" :key="l.beats" type="button" :aria-pressed="notes[selected].b === l.beats"
-          :title="l.label + ': ' + l.long" :class="['key', { key_on: notes[selected].b === l.beats }]" @click="setSelectedLength(l.beats)">
-          <span class="key_label">{{ l.frac }}</span><NoteGlyph :beats="l.beats" />
-        </button>
-        <button v-if="selNote" type="button" class="key key_space" title="Space: make it a rest (a silence)" :disabled="rests >= rules.maxRests" @click="toRest">
+        <button v-else-if="selNote" type="button" class="key key_space" title="Space: make it a rest (a silence)" :disabled="rests >= rules.maxRests" @click="toRest">
           <span class="key_label">rest</span>space
         </button>
         <button v-else type="button" class="key key_space" title="Space: make it a note again" :disabled="sounding >= rules.maxNotes" @click="toNote">
           <span class="key_label">note</span>space
         </button>
-        <button type="button" class="key key_del" title="Delete it" aria-label="Delete it" @click="remove">
+        <button v-if="!editing" type="button" class="key key_back" title="Backspace: remove the last note" aria-label="Backspace: remove the last note"
+          :disabled="!notes.length" @click="backspace">
+          <span class="key_label">back</span>⌫
+        </button>
+        <button v-else type="button" class="key key_del" title="Delete it" aria-label="Delete it" @click="remove">
           <span class="key_label">&nbsp;</span>Del
         </button>
       </div>
-      <p class="caption">{{ selNote ? 'Tap the staff above it to move it.' : 'A rest is a silence.' }}</p>
+      <p v-if="editing" class="caption">{{ selNote ? 'Tap the staff above it to move it.' : 'A rest is a silence.' }}</p>
     </div>
 
     <div class="row">
@@ -125,7 +107,7 @@
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { api, type Evaluation, type Note, type Rules } from '../ts/api'
 import { LENGTHS, TIER_LABEL, noteName } from '../ts/music'
-import { blip, play, type Playback } from '../ts/synth'
+import { play, type Playback } from '../ts/synth'
 import StaffEditor from './StaffEditor.vue'
 import NoteGlyph from './NoteGlyph.vue'
 import MicRecorder from './MicRecorder.vue'
@@ -186,24 +168,19 @@ watch(notes, (n) => {
   }, 300)
 }, { immediate: true, deep: true })
 
-/** A tap at +: remember the pitch (shown as a ghost note) and ask which length. */
-const addPitch = ref<number | null>(null)
-function onAdd(pitch: number) { addPitch.value = pitch }
-/** ▲▼ in the Add box: move the note being added a half step (how to add a sharp) before picking its length. */
-function nudgeAdd(d: number) {
-  if (addPitch.value === null) return
-  addPitch.value = Math.min(props.rules.highest, Math.max(props.rules.lowest, addPitch.value + d))
-  blip(addPitch.value, props.instrument)
+/** A tap at + adds a note at that height with the chosen length (the keyboard's lit key). */
+function addAt(pitch: number) {
+  if (sounding.value >= props.rules.maxNotes) return
+  notes.value = [...notes.value, { m: pitch, b: newLength.value }]
 }
-/** Add the note (or a rest) with that length; the length is remembered and highlighted next time. */
-function addAs(b: number, rest: boolean) {
-  if (addPitch.value === null) return
-  notes.value = [...notes.value, { m: rest ? null : addPitch.value, b }]
-  if (!rest) newLength.value = b
-  addPitch.value = null
-}
-watch(selected, (i) => { if (i >= 0) addPitch.value = null })    // tapping a note to edit it cancels adding
-/** ⌫ in the Add box: remove the last note (the box stays open, like typing). */
+/** space while adding: a rest at the end, with the chosen length */
+function addRestAtEnd() { notes.value = [...notes.value, { m: null, b: newLength.value }] }
+const addCaption = computed(() => {
+  if (sounding.value >= props.rules.maxNotes) return `The riff is full (${props.rules.maxNotes} notes). Tap a note to change it.`
+  const l = lengthOf(newLength.value)
+  return `Tap the staff to add a ${l.label.toLowerCase()} (${l.long}). Tap a note to change it.`
+})
+/** ⌫ while adding: remove the last note, like typing. */
 function backspace() { notes.value = notes.value.slice(0, -1) }
 function setSelectedLength(b: number) { notes.value = notes.value.map((x, i) => (i === selected.value ? { ...x, b } : x)) }
 function nudge(d: number) {
@@ -226,7 +203,7 @@ const undoNotes = ref<{ notes: Note[]; tuneId: string | undefined } | null>(null
 let undoTimer = 0
 function clear() {
   undoNotes.value = { notes: notes.value, tuneId: tuneId.value }
-  notes.value = []; selected.value = -1; addPitch.value = null; tuneId.value = undefined
+  notes.value = []; selected.value = -1; tuneId.value = undefined
   clearTimeout(undoTimer)
   undoTimer = window.setTimeout(() => { undoNotes.value = null }, 8000)
 }
@@ -278,8 +255,6 @@ onBeforeUnmount(() => playback.value?.stop())
 .key_back, .key_del { flex-grow: 1.2; font-size: 1.05rem; }
 .key_del { color: var(--bad); }
 .key_label { font-size: 0.66rem; font-weight: 700; opacity: 0.85; max-width: 100%; overflow: hidden; white-space: nowrap; }
-.addhint { display: flex; align-items: center; gap: 10px; }
-.addhint .caption { flex: 1; width: auto; }
 .btn_undo { border-color: var(--accent); color: var(--accent); }
 .editbar_head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .editbar_gap { flex: 1; }
