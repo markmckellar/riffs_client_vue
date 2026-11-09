@@ -1,9 +1,8 @@
 <template>
   <section class="composer">
-    <!-- laid out like the guess screen: play + sound on top, the staff, the piano, then the keys -->
+    <!-- laid out like the guess screen: play on top, the staff, the keyboard (with the instrument tabs), then the tools -->
     <div class="row">
       <button type="button" class="btn btn_primary" :disabled="!sounding" @click="togglePlay">{{ playback ? '■ Stop' : '▶ Play' }}</button>
-      <InstrumentPicker bare />
       <span :class="['count', { count_ok: countOk }]" :title="`a riff has ${rules.minNotes} to ${rules.maxNotes} notes`">{{ sounding }}/{{ rules.maxNotes }} notes</span>
     </div>
 
@@ -12,7 +11,7 @@
       :new-length="1" plain-rhythm :instrument="instrument" @add="addAt" />
 
     <!-- the same keys as when guessing (piano or a fretboard): a key puts the note at the cursor and moves on, like typing -->
-    <NoteKeys :lowest="rules.lowest" :highest="rules.highest" :current="selNote ? selNote.m : null" :instrument="instrument" @press="onPiano" />
+    <NoteKeys :lowest="rules.lowest" :highest="rules.highest" :current="selNote ? selNote.m : null" @press="onPiano" />
 
     <div class="toolbar">
       <div class="tools">
@@ -31,10 +30,10 @@
           <h3>Other buttons</h3>
           <dl>
             <dt>🗑 Clear</dt><dd>Start over. You get a few seconds to undo it.</dd>
-            <dt>▶</dt><dd>Hear your riff. The drop-down next to it picks the sound.</dd>
-            <dt>🎹 🎸</dt><dd>The tabs on top of the keys pick how you enter notes: <b>piano</b>, <b>guitar</b> (frets 0–5,
-              standard tuning) or <b>bass</b>. All three have the same notes, E3 to A5 (guitar and bass music is
-              written an octave above how it sounds).</dd>
+            <dt>▶</dt><dd>Hear your riff.</dd>
+            <dt>🎹 🎸</dt><dd>The tabs on top of the keys pick the instrument: how riffs sound, and how you enter notes.
+              <b>Guitar</b> (frets 0–5, standard tuning) and <b>bass</b> get a fretboard, the others piano keys. All have
+              the same notes, E3 to A5 (guitar and bass music is written an octave above how it sounds).</dd>
             <dt>🎙</dt><dd><b>Play it in:</b> sing, whistle or play into the phone, one note at a time, and it writes the notes down.</dd>
           </dl>
         </HelpSheet>
@@ -58,7 +57,6 @@ import { play, type Playback } from '../ts/synth'
 import StaffEditor from './StaffEditor.vue'
 import MicRecorder from './MicRecorder.vue'
 import HelpSheet from './HelpSheet.vue'
-import InstrumentPicker from './InstrumentPicker.vue'
 import NoteKeys from './NoteKeys.vue'
 
 const props = defineProps<{ gameId: string; rules: Rules; instrument: string; opponentName: string }>()

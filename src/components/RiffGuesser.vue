@@ -1,9 +1,8 @@
 <template>
   <section class="guesser">
-    <!-- one row: play the riff, the sound, and Learner mode (what Learner mode gives is in 💡 Help and ⓘ) -->
+    <!-- one row: play the riff and Learner mode (the instrument tabs sit on the keyboard) (what Learner mode gives is in 💡 Help and ⓘ) -->
     <div class="row">
       <button type="button" class="btn btn_primary" @click="togglePlay">{{ playback ? '■ Stop' : '▶ Guess the riff' }}</button>
-      <InstrumentPicker bare />
       <label class="learner_switch" title="Learner mode: shape arrows, where a note could be, a free note every 2 misses (half points)">
         <input type="checkbox" :checked="me.learner" :disabled="busy" @change="emit('learner', !me.learner)" />
         🎓 Learner
@@ -14,8 +13,8 @@
           work out the rest from it: is the next one higher or lower, a small step or a jump?</p>
         <h3>Buttons</h3>
         <dl>
-          <dt>▶</dt><dd><b>Guess the riff</b> plays the riff, as often as you like. The drop-down next to it picks the sound.</dd>
-          <dt>🎹 🎸</dt><dd><b>The keys:</b> piano, guitar or bass (pick one with the tabs on top of the keys). Tap a key or a fret to hear it and put that note in the selected slot; it then moves on to
+          <dt>▶</dt><dd><b>Guess the riff</b> plays the riff, as often as you like.</dd>
+          <dt>🎹 🎸</dt><dd><b>The keys:</b> the tabs on top pick the instrument, which sets both the sound and the keys (guitar and bass get a fretboard). Tap a key or a fret to hear it and put that note in the selected slot; it then moves on to
             the next note, like typing. <b>⌫</b> empties a note (or the one before). To change a note, tap it on the staff
             first. On the piano the C keys are marked C4 and C5; on a fretboard the selected note lights up everywhere it can be played.</dd>
           <dt>?</dt><dd>An empty slot. Tap it to select it.</dd>
@@ -58,7 +57,7 @@
 
     <!-- the note keyboard (piano or a fretboard): a key fills the selected slot (or the first empty one) and moves on, like typing -->
     <NoteKeys :lowest="rules.lowest" :highest="rules.highest"
-      :current="selected >= 0 ? slots[selected]?.m ?? null : null" :instrument="instrument" @press="onPiano" />
+      :current="selected >= 0 ? slots[selected]?.m ?? null : null" @press="onPiano" />
 
     <div class="toolbar">
       <div class="tools">
@@ -111,7 +110,6 @@ import StaffEditor from './StaffEditor.vue'
 import GuessHistory from './GuessHistory.vue'
 import HelpSheet from './HelpSheet.vue'
 import NoteKeys from './NoteKeys.vue'
-import InstrumentPicker from './InstrumentPicker.vue'
 
 const props = defineProps<{ round: Round; rules: Rules; instrument: string; me: Player; busy: boolean; /** testing: show the answer faintly */ developer?: boolean }>()
 const emit = defineEmits<{ guess: [notes: number[], beats: number[]]; hint: []; extraString: []; learner: [boolean] }>()

@@ -3,11 +3,18 @@
 import { frequency } from './music'
 import type { Note } from './api'
 
-export interface Instrument { id: string; name: string; emoji: string }
+/**
+ * One list for both the sound and how notes are entered. Instruments with strings get a fretboard (open strings
+ * low to high, as written pitches: guitar and bass music is written an octave above how it sounds, so a guitar's
+ * frets 0–5 in standard tuning are E3–A5, the game's range); the rest get piano keys. The bass has the guitar's
+ * four low strings and frets 0–14, to reach the same top note.
+ */
+export interface Instrument { id: string; name: string; emoji: string; strings?: number[]; frets?: number }
 
 export const INSTRUMENTS: Instrument[] = [
   { id: 'piano', name: 'Piano', emoji: '🎹' },
-  { id: 'guitar', name: 'Guitar', emoji: '🎸' },
+  { id: 'guitar', name: 'Guitar', emoji: '🎸', strings: [52, 57, 62, 67, 71, 76], frets: 5 },
+  { id: 'bass', name: 'Bass', emoji: '🎸', strings: [52, 57, 62, 67], frets: 14 },
   { id: 'flute', name: 'Flute', emoji: '🪈' },
   { id: 'organ', name: 'Organ', emoji: '⛪' },
   { id: 'chip', name: '8-bit', emoji: '👾' },
@@ -72,6 +79,19 @@ function playOne(c: AudioContext, inst: string, midi: number, start: number, dur
       src.connect(g).connect(out)
       src.start(start)
       src.stop(start + dur + 0.6)
+      break
+    }
+    case 'bass': {
+      // a plucked string an octave down (bass is written an octave above how it sounds), with the brightness rolled off
+      const src = c.createBufferSource()
+      src.buffer = pluckBuffer(c, f / 2, dur + 0.8)
+      const lp = c.createBiquadFilter()
+      lp.type = 'lowpass'
+      lp.frequency.value = Math.min(2000, f * 3)
+      const g = envelope(c, start, dur, 0.004, 1.2, 0.6, 0.15)
+      src.connect(lp).connect(g).connect(out)
+      src.start(start)
+      src.stop(start + dur + 0.8)
       break
     }
     case 'flute': {
