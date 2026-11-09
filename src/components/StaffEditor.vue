@@ -131,7 +131,7 @@ const props = withDefaults(defineProps<{
   peek?: (number | null)[] | null
 }>(), {
   mode: 'compose', locked: () => [], marks: null, lengthMarks: null, markHints: null, highlight: -1, maxNotes: 8, maxRests: 2,
-  lowest: 52, highest: 81, newLength: 1, newRest: false, ghost: null, instrument: 'piano', plainRhythm: false, contour: null, possible: null, peek: null,
+  lowest: 52, highest: 80, newLength: 1, newRest: false, ghost: null, instrument: 'piano', plainRhythm: false, contour: null, possible: null, peek: null,
 })
 const emit = defineEmits<{ 'update:modelValue': [Note[]]; add: [pitch: number]; cancel: [] }>()
 const selected = defineModel<number>('selected', { default: -1 })

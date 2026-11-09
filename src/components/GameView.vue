@@ -16,8 +16,30 @@
     </div>
 
 
+    <!-- a challenge: waiting for a yes (the challenger can already write the first riff) -->
+    <div v-if="game.status === 'invited' && game.turn !== 'invited'" class="notice">
+      Waiting for <strong>{{ game.opponent.name }}</strong> to accept<template v-if="game.quick"> (a bot plays instead if they don't
+      answer within a minute)</template>.<template v-if="game.turn === 'compose'"> You can write your riff now.</template>
+      <button v-if="!game.quick" type="button" class="btn btn_small" :disabled="busy" @click="act(() => api.playBot(game!.id))">Play a bot instead</button>
+    </div>
+
     <div class="card">
-      <RiffComposer v-if="game.turn === 'compose'" :key="'c' + current.number" :game-id="game.id" :rules="rules"
+      <div v-if="game.turn === 'invited'" class="waiting">
+        <div class="waiting_icon">⚔️🎸</div>
+        <p><strong>{{ game.opponent.name }}</strong> challenged you to a game.</p>
+        <div class="answer">
+          <button type="button" class="btn btn_primary" :disabled="busy" @click="act(() => api.accept(game!.id))">Accept</button>
+          <button type="button" class="btn" :disabled="busy" @click="decline">No thanks</button>
+        </div>
+      </div>
+
+      <div v-else-if="game.turn === 'declined'" class="waiting">
+        <div class="waiting_icon">🙅</div>
+        <p><strong>{{ game.opponent.name }}</strong> said no thanks.</p>
+        <button type="button" class="btn btn_primary" :disabled="busy" @click="act(() => api.playBot(game!.id))">Play a bot instead</button>
+      </div>
+
+      <RiffComposer v-else-if="game.turn === 'compose'" :key="'c' + current.number" :game-id="game.id" :rules="rules"
         :instrument="instrument" :opponent-name="game.opponent.name" @send="sendRiff" />
 
       <RiffGuesser v-else-if="game.turn === 'guess'" :round="current" :rules="rules" :instrument="instrument" :me="game.me" :developer="developer"
@@ -31,7 +53,7 @@
       </div>
 
       <div v-else-if="game.turn === 'wait_guess'" class="watching">
-        <h2>{{ game.opponent.name }} is guessing your riff</h2>
+        <h2>{{ game.status === 'invited' ? `Your riff is ready for ${game.opponent.name}` : `${game.opponent.name} is guessing your riff` }}</h2>
         <StaffEditor :model-value="current.riff ?? []" mode="view" plain-rhythm :highlight="playing" />
         <div class="row">
           <button type="button" class="btn" @click="playMine">▶ Play my riff</button>
@@ -57,6 +79,7 @@
     <div class="game_foot">
       <button type="button" class="btn btn_ghost" @click="emit('back')">← Games</button>
       <button v-if="game.status === 'active'" type="button" class="btn btn_ghost btn_danger" @click="resign">Resign</button>
+      <button v-else-if="game.status === 'invited' && game.turn !== 'invited'" type="button" class="btn btn_ghost btn_danger" @click="withdraw">Cancel challenge</button>
     </div>
   </div>
   <p v-else class="muted">Loading…</p>
@@ -108,7 +131,7 @@ watch(game, (now, before) => {
 
 // Don't rely only on the events feed (it's in memory; a server restart loses it): while it's the other player's
 // turn, ask for the game every few seconds, and again whenever the page comes back into view.
-const waiting = computed(() => game.value?.turn === 'wait_compose' || game.value?.turn === 'wait_guess')
+const waiting = computed(() => game.value?.turn === 'wait_compose' || game.value?.turn === 'wait_guess' || game.value?.status === 'invited')
 const recheck = window.setInterval(() => { if (waiting.value && !document.hidden) void load() }, 5000)
 function onVisible() { if (!document.hidden) void load() }
 onMounted(() => document.addEventListener('visibilitychange', onVisible))
@@ -122,6 +145,12 @@ async function act(f: () => Promise<GameView>) {
 const sendRiff = (notes: Note[], tuneId?: string) => act(() => api.sendRiff(props.gameId, notes, tuneId))
 const guess = (notes: number[], beats: number[]) => act(() => api.guess(props.gameId, notes, beats))
 function resign() { if (confirm('Resign this game?')) void act(() => api.resign(props.gameId)) }
+/** say no to a challenge: back to the games (a Quick match one goes to a bot, so it isn't yours any more) */
+async function decline() {
+  busy.value = true
+  try { await api.decline(props.gameId); emit('back') } catch (e) { error.value = (e as Error).message } finally { busy.value = false }
+}
+async function withdraw() { if (confirm('Cancel this challenge?')) { await act(() => api.resign(props.gameId)); if (!error.value) emit('back') } }
 
 /** How the game ended: who snapped their last string, or who resigned. */
 const overText = computed(() => {
@@ -152,6 +181,9 @@ function playMine() { if (current.value.riff) play(current.value.riff, instrumen
 .waiting_icon, .over_icon { font-size: 2.6rem; }
 .over_how { margin: 4px 0; font-weight: 700; }
 .watching { display: grid; gap: 10px; }
+.notice { background: var(--surface); border-left: 3px solid var(--accent); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 0.9rem;
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.answer { display: flex; gap: 10px; justify-content: center; }
 .watching h2 { margin: 0; font-size: 1.15rem; }
 .row { display: flex; gap: 10px; align-items: center; }
 .muted { color: var(--text-muted); }

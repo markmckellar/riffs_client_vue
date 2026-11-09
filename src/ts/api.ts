@@ -27,16 +27,24 @@ export interface Round {
   guesses: Guess[]; hintsUsed: number; freeNotes: number; learner: boolean; fromLibrary: boolean
   riff?: Note[]; score?: number; tier?: string; tuneId?: string | null
 }
-export type Turn = 'compose' | 'wait_compose' | 'guess' | 'wait_guess' | 'over'
+/** invited: you were challenged and haven't answered; declined: your challenge was turned down */
+export type Turn = 'compose' | 'wait_compose' | 'guess' | 'wait_guess' | 'over' | 'invited' | 'declined'
 export interface GameView {
-  id: string; status: 'active' | 'finished'; winner: string | null; resigned: string | null; updatedAt: number
+  /** invited: a challenge waiting for an answer (invited = who was challenged; quick = by Quick match, a bot takes over if unanswered) */
+  id: string; status: 'invited' | 'active' | 'finished' | 'declined' | 'cancelled'; winner: string | null; resigned: string | null; updatedAt: number
+  invited: string | null; quick: boolean
   me: Player; opponent: Player; rounds: Round[]; turn: Turn; round?: number
 }
 export type BotLevel = 'easy' | 'medium' | 'hard'
-export interface Lobbyist { id: string; name: string; bot: boolean; level?: BotLevel; about?: string; online: boolean; wins: number; losses: number }
+/** someone to play: game = the id of a game with them that's on or waiting for an answer; lastPlayed: in past opponents */
+export interface PlayerEntry {
+  id: string; name: string; bot: boolean; level?: BotLevel; about?: string; online: boolean; wins: number; losses: number
+  game: string | null; lastPlayed?: number
+}
+export interface Home { online: PlayerEntry[]; past: PlayerEntry[] }
 export interface Reason { rule: string; points: number; text: string }
 export interface Evaluation { score: number; tier: string; key: string; reasons: Reason[]; problem: string | null }
-export interface Rules { minNotes: number; maxNotes: number; maxRests: number; lowest: number; highest: number; lengths: number[]; strings: number }
+export interface Rules { minNotes: number; maxNotes: number; maxRests: number; lowest: number; highest: number; maxSpan: number; lengths: number[]; strings: number }
 export interface Tune { id: string; title: string; source: string; year: number; meter: string; fragments: number }
 export interface Fragment { tuneId: string; title: string; start: number; notes: Note[]; score: number; phraseEnd: boolean }
 export interface GameEvent { seq: number; type: string; gameId: string; text: string; at: number }
@@ -68,7 +76,8 @@ export const api = {
   logout: () => call<unknown>('POST', 'api/auth/logout'),
   setLearner: (learner: boolean) => call<Me>('POST', 'api/me/settings', { learner }),
   rules: () => call<Rules>('GET', 'api/riffs/rules'),
-  players: () => call<Lobbyist[]>('GET', 'api/players'),
+  home: () => call<Home>('GET', 'api/home'),
+  findPlayers: (q: string) => call<PlayerEntry[]>('GET', `api/players?q=${encodeURIComponent(q)}`),
   games: () => call<GameView[]>('GET', 'api/games'),
   game: (id: string) => call<GameView>('GET', `api/games/${id}`),
   start: (opponentId?: string) => call<GameView>('POST', 'api/games', { opponentId: opponentId ?? null }),
@@ -76,6 +85,9 @@ export const api = {
   guess: (id: string, notes: number[], beats: number[]) => call<GameView>('POST', `api/games/${id}/guess`, { notes, beats }),
   hint: (id: string) => call<GameView>('POST', `api/games/${id}/hint`),
   extraString: (id: string) => call<GameView>('POST', `api/games/${id}/extra-string`),
+  accept: (id: string) => call<GameView>('POST', `api/games/${id}/accept`),
+  decline: (id: string) => call<GameView>('POST', `api/games/${id}/decline`),
+  playBot: (id: string) => call<GameView>('POST', `api/games/${id}/bot`),
   resign: (id: string) => call<GameView>('POST', `api/games/${id}/resign`),
   evaluate: (notes: Note[]) => call<Evaluation>('POST', 'api/riffs/evaluate', { notes }),
   library: () => call<Tune[]>('GET', 'api/library'),

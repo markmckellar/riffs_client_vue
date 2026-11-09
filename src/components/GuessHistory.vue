@@ -4,7 +4,7 @@
       <span class="history_n">{{ i + 1 }}</span>
       <span v-for="(n, j) in g.notes" :key="j" :class="['history_note', 'mark_' + g.marks[j], { history_len: g.lengths?.[j] === 'wrong' }]"
         :title="g.lengths?.[j] === 'wrong' ? 'wrong length' : ''">
-        {{ noteName(n) }}<small v-if="g.hints[j]">{{ g.hints[j] === 'up' ? '↑' : '↓' }}</small>
+        {{ noteName(n + (shift ?? 0)) }}<small v-if="g.hints[j]">{{ g.hints[j] === 'up' ? '↑' : '↓' }}</small>
       </span>
     </li>
   </ol>
@@ -12,7 +12,8 @@
 <script setup lang="ts">
 import type { Guess } from '../ts/api'
 import { noteName } from '../ts/music'
-defineProps<{ guesses: Guess[] }>()
+/** shift: how far the riff is moved to fit the instrument (ts/instrument.ts), so names match the keys */
+defineProps<{ guesses: Guess[]; shift?: number }>()
 </script>
 <style scoped>
 .history { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }

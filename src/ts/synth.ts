@@ -5,16 +5,16 @@ import type { Note } from './api'
 
 /**
  * One list for both the sound and how notes are entered. Instruments with strings get a fretboard (open strings
- * low to high, as written pitches: guitar and bass music is written an octave above how it sounds, so a guitar's
- * frets 0–5 in standard tuning are E3–A5, the game's range); the rest get piano keys. The bass has the guitar's
- * four low strings and frets 0–14, to reach the same top note.
+ * low to high, as written pitches: guitar and bass music is written an octave above how it sounds), frets 0–4; the
+ * rest get piano keys, C4–G5 (sized for a phone). Each has its own range (ts/instrument.ts), and a riff is moved to
+ * fit the one picked: guitar E3–G♯5, bass (the guitar's four low strings) E3–B4.
  */
 export interface Instrument { id: string; name: string; emoji: string; strings?: number[]; frets?: number }
 
 export const INSTRUMENTS: Instrument[] = [
   { id: 'piano', name: 'Piano', emoji: '🎹' },
-  { id: 'guitar', name: 'Guitar', emoji: '🎸', strings: [52, 57, 62, 67, 71, 76], frets: 5 },
-  { id: 'bass', name: 'Bass', emoji: '🎸', strings: [52, 57, 62, 67], frets: 14 },
+  { id: 'guitar', name: 'Guitar', emoji: '🎸', strings: [52, 57, 62, 67, 71, 76], frets: 4 },
+  { id: 'bass', name: 'Bass', emoji: '🎸', strings: [52, 57, 62, 67], frets: 4 },
   { id: 'flute', name: 'Flute', emoji: '🪈' },
   { id: 'organ', name: 'Organ', emoji: '⛪' },
   { id: 'chip', name: '8-bit', emoji: '👾' },

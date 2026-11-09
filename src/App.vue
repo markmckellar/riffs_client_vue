@@ -1,7 +1,7 @@
 <template>
   <header class="app_header">
     <button type="button" class="app_brand" @click="go('')"><span aria-hidden="true">🎸</span> {{ gameName }}</button>
-    <!-- the menu: who you are and Sign out (room for more later) -->
+    <!-- the menu: who you are, Learner mode, Sign out -->
     <nav v-if="me" class="app_menu">
       <button type="button" class="app_menu_btn" :aria-expanded="menuOpen" aria-label="Menu" @click.stop="menuOpen = !menuOpen">☰</button>
       <div v-if="menuOpen" class="app_menu_panel" role="menu" @click.stop>
@@ -9,6 +9,10 @@
           <span class="muted">Signed in as</span>
           <strong>{{ me.name }}</strong>
         </div>
+        <label class="app_menu_item app_menu_learner" role="menuitemcheckbox" :aria-checked="me.learner">
+          <input type="checkbox" :checked="me.learner" @change="setLearner(!me.learner)" />
+          <span>🎓 Learner mode<small class="muted">Ear-training helpers when guessing; guessed riffs earn half points.</small></span>
+        </label>
         <button type="button" class="app_menu_item" role="menuitem" @click="menuOpen = false; signOut()">Sign out</button>
       </div>
     </nav>
@@ -21,7 +25,7 @@
     <template v-else-if="rules">
       <GameView v-if="route.gameId" :game-id="route.gameId" :rules="rules" :refresh="refresh"
         :developer="!!me.attributes?.includes('developer')" @back="go('')" @rematch="rematch" />
-      <LobbyView v-else :refresh="refresh" :me="me" @open="(id) => go('game/' + id)" @learner="setLearner" />
+      <HomeView v-else :refresh="refresh" :me="me" @open="(id) => go('game/' + id)" />
     </template>
   </main>
 
@@ -34,7 +38,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { api, ApiError, type AuthConfig, type GameEvent, type Me, type Rules } from './ts/api'
 import SignIn from './components/SignIn.vue'
-import LobbyView from './components/LobbyView.vue'
+import HomeView from './components/HomeView.vue'
 import GameView from './components/GameView.vue'
 
 const config = ref<AuthConfig | null>(null)
@@ -119,7 +123,7 @@ function notify(e: GameEvent) {
     n.onclick = () => { window.focus(); go('game/' + e.gameId) }
     shown.push(n)
   }
-  if (navigator.vibrate && (e.type === 'riff_ready' || e.type === 'round_over')) navigator.vibrate(80)
+  if (navigator.vibrate && (e.type === 'riff_ready' || e.type === 'round_over' || e.type === 'challenge')) navigator.vibrate(80)
 }
 function openToast(t: GameEvent) { toasts.value = toasts.value.filter((x) => x.seq !== t.seq); go('game/' + t.gameId) }
 
@@ -145,6 +149,10 @@ document.addEventListener('visibilitychange', () => {
 .app_menu_who strong { font-size: 1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .app_menu_item { text-align: left; background: none; border: 0; color: var(--text); font: inherit; padding: 10px 8px; border-radius: var(--radius-sm); cursor: pointer; }
 .app_menu_item:hover { background: var(--surface-2); }
+.app_menu_learner { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.app_menu_learner input { accent-color: var(--accent); width: 18px; height: 18px; margin: 2px 0 0; flex: none; }
+.app_menu_learner span { display: grid; gap: 2px; }
+.app_menu_learner small { font-size: 0.75rem; }
 .app_main { max-width: 640px; margin: 0 auto; padding: 14px 16px 40px; }
 .toasts { position: fixed; bottom: max(16px, env(safe-area-inset-bottom)); left: 16px; right: 16px; display: grid; gap: 8px; z-index: 20; justify-items: center; }
 .toast { max-width: 480px; width: 100%; background: var(--accent); color: var(--accent-contrast); border: 0; border-radius: var(--radius); padding: 12px 14px; font: inherit; font-weight: 600; box-shadow: var(--shadow); cursor: pointer; text-align: left; }

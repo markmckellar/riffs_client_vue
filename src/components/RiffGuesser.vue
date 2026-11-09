@@ -14,7 +14,8 @@
         <h3>Buttons</h3>
         <dl>
           <dt>▶</dt><dd><b>Guess the riff</b> plays the riff, as often as you like.</dd>
-          <dt>🎹 🎸</dt><dd><b>The keys:</b> the tabs on top pick the instrument, which sets both the sound and the keys (guitar and bass get a fretboard). Tap a key or a fret to hear it and put that note in the selected slot; it then moves on to
+          <dt>🎹 🎸</dt><dd><b>The keys:</b> the tabs on top pick the instrument, which sets both the sound and the keys (guitar and bass get a fretboard).
+            Each instrument reaches different notes, so the riff is moved to fit it (an octave, or into a nearby key): you hear and write it there. Tap a key or a fret to hear it and put that note in the selected slot; it then moves on to
             the next note, like typing. <b>⌫</b> empties a note (or the one before). To change a note, tap it on the staff
             first. On the piano the C keys are marked C4 and C5; on a fretboard the selected note lights up everywhere it can be played.</dd>
           <dt>?</dt><dd>An empty slot. Tap it to select it.</dd>
@@ -49,14 +50,14 @@
     </div>
 
 
-    <StaffEditor v-model="slots" v-model:selected="selected" mode="guess" plain-rhythm :locked="round.revealed"
+    <StaffEditor v-model="slots" v-model:selected="selected" mode="guess" plain-rhythm :locked="known"
       :marks="lastGuess?.marks" :mark-hints="lastGuess?.hints" :length-marks="lastGuess?.lengths" :highlight="playingSlot"
       :contour="me.learner ? contour : null" :possible="me.learner ? possible : null"
       :peek="developer ? peek : null"
-      :lowest="rules.lowest" :highest="rules.highest" :instrument="instrument" />
+      :lowest="keys.lowest" :highest="keys.highest" :instrument="instrument" />
 
     <!-- the note keyboard (piano or a fretboard): a key fills the selected slot (or the first empty one) and moves on, like typing -->
-    <NoteKeys :lowest="rules.lowest" :highest="rules.highest"
+    <NoteKeys :lowest="keys.lowest" :highest="keys.highest"
       :current="selected >= 0 ? slots[selected]?.m ?? null : null" @press="onPiano" />
 
     <div class="toolbar">
@@ -98,7 +99,7 @@
       {{ complete ? 'Guess!' : `Fill in ${missing} more note${missing === 1 ? '' : 's'}` }}
     </button>
 
-    <GuessHistory v-if="round.guesses.length" :guesses="round.guesses" />
+    <GuessHistory v-if="round.guesses.length" :guesses="round.guesses" :shift="shift" />
   </section>
 </template>
 
@@ -106,6 +107,7 @@
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import type { Note, Player, Round, Rules } from '../ts/api'
 import { play, type Playback } from '../ts/synth'
+import { fitShift, rangeFor, rangeOf } from '../ts/instrument'
 import StaffEditor from './StaffEditor.vue'
 import GuessHistory from './GuessHistory.vue'
 import HelpSheet from './HelpSheet.vue'
@@ -115,7 +117,19 @@ const props = defineProps<{ round: Round; rules: Rules; instrument: string; me: 
 const emit = defineEmits<{ guess: [notes: number[], beats: number[]]; hint: []; extraString: []; learner: [boolean] }>()
 const FREE_EVERY = 2
 
-const slots = ref<Note[]>([])
+// The riff moved to fit the instrument (ts/instrument.ts): everything on screen, played and entered is moved by
+// `shift`; the notes are kept as the server has them (`entered`), so switching instrument keeps the guess.
+const answer = computed(() => (props.round.riff ?? []).filter((n) => n.m !== null).map((n) => n.m as number))
+const shift = computed(() => fitShift(answer.value, rangeOf(props.instrument)))
+const up = (m: number | null | undefined) => (m == null ? null : m + shift.value)
+/** the keys and staff: the instrument's notes (widened only for an old riff too wide for it) */
+const keys = computed(() => rangeFor(rangeOf(props.instrument), answer.value.map(up)))
+const known = computed(() => props.round.revealed.map(up))
+const entered = ref<Note[]>([])
+const slots = computed<Note[]>({
+  get: () => entered.value.map((n) => ({ ...n, m: up(n.m) })),
+  set: (v) => { entered.value = v.map((n) => ({ ...n, m: n.m == null ? null : n.m - shift.value })) },
+})
 const selected = ref(-1)
 const bpm = ref(90)    // riffs play at one steady speed (no tempo slider)
 // shallowRef: a plain ref would wrap the object in a proxy, and "playback.value === p" below would never match
@@ -130,20 +144,19 @@ const editable = computed(() => selected.value >= 0 && props.round.revealed[sele
 // start each guess from what's known, plus the last guess's notes to edit
 // (a string key: a new array each time would count as a change on every reload and wipe the notes being entered)
 watch(() => `${props.round.number}|${props.round.guesses.length}|${props.round.revealed.join()}`, () => {
-  slots.value = props.round.revealed.map((r, i) => ({
+  entered.value = props.round.revealed.map((r, i) => ({
     m: r ?? lastGuess.value?.notes[i] ?? null,
     b: 1,
   }))
 }, { immediate: true })
 
 // ---- learner mode helpers (the phone already has the riff's notes, to play them)
-const answer = computed(() => (props.round.riff ?? []).filter((n) => n.m !== null).map((n) => n.m as number))
 /** developers: the answer for every note not yet known, drawn faintly on the staff (for testing) */
-const peek = computed(() => answer.value.map((m, i) => (props.round.revealed[i] == null ? m : null)))
+const peek = computed(() => answer.value.map((m, i) => (props.round.revealed[i] == null ? up(m) : null)))
 /** up / down / same, from each note to the next: the melody's shape */
 const contour = computed(() => answer.value.map((m, i) => (i === 0 ? null : m > answer.value[i - 1] ? 'up' : m < answer.value[i - 1] ? 'down' : 'same')))
 
-/** Could the real note be p, given this guess's mark for the slot? (the same rules the server marks by) */
+/** Could the real note be p (as the server has it), given each guess's mark for the slot? (the rules the server marks by) */
 function fits(p: number, slot: number): boolean {
   return props.round.guesses.every((g) => {
     const n = g.notes[slot]
@@ -157,7 +170,7 @@ function fits(p: number, slot: number): boolean {
 }
 /** Does p agree with the melody's shape next to notes already known? (the arrows the learner sees) */
 function fitsShape(p: number, s: number): boolean {
-  const known = props.round.revealed, c = contour.value
+  const known = props.round.revealed.map(up), c = contour.value
   const prev = known[s - 1], next = known[s + 1]
   if (prev != null && !(c[s] === 'up' ? p > prev : c[s] === 'down' ? p < prev : p === prev)) return false
   if (next != null && !(c[s + 1] === 'up' ? next > p : c[s + 1] === 'down' ? next < p : next === p)) return false
@@ -168,8 +181,9 @@ const possible = computed(() => {
   const s = selected.value
   if (s < 0 || props.round.revealed[s] != null) return null
   const l: number[] = []
-  for (let p = props.rules.lowest; p <= props.rules.highest; p++) if (fits(p, s) && fitsShape(p, s)) l.push(p)
-  return l.length < props.rules.highest - props.rules.lowest + 1 ? l : null    // nothing ruled out yet: no bars
+  const { lowest, highest } = keys.value
+  for (let p = lowest; p <= highest; p++) if (fits(p - shift.value, s) && fitsShape(p, s)) l.push(p)
+  return l.length < highest - lowest + 1 ? l : null    // nothing ruled out yet: no bars
 })
 const tokens = computed(() => props.me.hints + props.me.extraStrings)
 /** the last guess just earned a learner's free note */
@@ -232,7 +246,8 @@ function slotOf(riffIndex: number): number {
 function togglePlay() {
   if (playback.value) { playback.value.stop(); playback.value = null; return }
   if (!props.round.riff) return
-  const p = play(props.round.riff, props.instrument, bpm.value, (i) => { playingSlot.value = slotOf(i) })
+  const riff = props.round.riff.map((n) => ({ ...n, m: up(n.m) }))
+  const p = play(riff, props.instrument, bpm.value, (i) => { playingSlot.value = slotOf(i) })
   playback.value = p
   void p.done.then(() => { if (playback.value === p) playback.value = null })
 }
@@ -247,7 +262,7 @@ function playGuess() {
 
 function submit() {
   playback.value?.stop()
-  emit('guess', slots.value.map((n) => n.m as number), slots.value.map(() => 1))
+  emit('guess', entered.value.map((n) => n.m as number), entered.value.map(() => 1))
 }
 onBeforeUnmount(() => playback.value?.stop())
 </script>

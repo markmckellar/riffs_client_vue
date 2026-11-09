@@ -12,7 +12,7 @@
     <div class="nk_board" role="tabpanel">
       <PianoKeys v-if="!picked.strings" :lowest="lowest" :highest="highest" :current="current" :instrument="picked.id"
         @press="(m) => emit('press', m)" />
-      <Fretboard v-else :key="picked.id" :strings="picked.strings" :frets="picked.frets ?? 5" :name="picked.name"
+      <Fretboard v-else :key="picked.id" :strings="picked.strings" :frets="frets" :name="picked.name"
         :lowest="lowest" :highest="highest" :current="current" :instrument="picked.id" @press="(m) => emit('press', m)" />
     </div>
   </div>
@@ -25,10 +25,16 @@ import { instrument } from '../ts/instrument'
 import PianoKeys from './PianoKeys.vue'
 import Fretboard from './Fretboard.vue'
 
-defineProps<{ lowest: number; highest: number; current: number | null }>()
+/** lowest/highest: the picked instrument's range (ts/instrument.ts), widened only for a riff too wide for it */
+const props = defineProps<{ lowest: number; highest: number; current: number | null }>()
 const emit = defineEmits<{ press: [midi: number] }>()
 const picked = computed(() => INSTRUMENTS.find((i) => i.id === instrument.value) ?? INSTRUMENTS[0])
 const strip = ref<HTMLElement | null>(null)
+/** frets 0–4, or more if a (too wide) riff needs a higher note */
+const frets = computed(() => {
+  const s = picked.value.strings ?? []
+  return Math.max(picked.value.frets ?? 4, props.highest - (s[s.length - 1] ?? props.highest))
+})
 
 function pick(id: string) {
   instrument.value = id    // shared by every screen and remembered

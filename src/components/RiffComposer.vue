@@ -7,11 +7,11 @@
     </div>
 
     <StaffEditor v-model="notes" v-model:selected="selected" mode="compose" :highlight="playing"
-      :max-notes="rules.maxNotes" :max-rests="rules.maxRests" :lowest="rules.lowest" :highest="rules.highest"
+      :max-notes="rules.maxNotes" :max-rests="rules.maxRests" :lowest="keys.lowest" :highest="keys.highest"
       :new-length="1" plain-rhythm :instrument="instrument" @add="addAt" />
 
     <!-- the same keys as when guessing (piano or a fretboard): a key puts the note at the cursor and moves on, like typing -->
-    <NoteKeys :lowest="rules.lowest" :highest="rules.highest" :current="keyNote" @press="onPiano" />
+    <NoteKeys :lowest="keys.lowest" :highest="keys.highest" :current="keyNote" @press="onPiano" />
 
     <div class="toolbar">
       <div class="tools">
@@ -20,7 +20,7 @@
           :disabled="selected < 0 && rests >= rules.maxRests" @click="restKey">␣ rest</button>
         <button v-if="undoNotes" type="button" class="tool btn_undo" @click="undoClear">↶ Undo</button>
         <button v-else type="button" class="tool" :disabled="!notes.length" @click="clear">Clear</button>
-        <MicRecorder :bpm="bpm" :lowest="rules.lowest" :highest="rules.highest" :max-notes="rules.maxNotes" @notes="fromMic" />
+        <MicRecorder :bpm="bpm" :lowest="keys.lowest" :highest="keys.highest" :max-notes="rules.maxNotes" @notes="fromMic" />
         <HelpSheet title="How to write a riff" storage-key="riffs_help_compose">
           <p><b>To add:</b> tap a <b>piano key</b> or a spot on the <b>fretboard</b> (or the staff at <b>+</b>). The note goes in at the cursor, which then
             moves on, like typing. Every note is the same length.</p>
@@ -32,8 +32,9 @@
             <dt>🗑 Clear</dt><dd>Start over. You get a few seconds to undo it.</dd>
             <dt>▶</dt><dd>Hear your riff.</dd>
             <dt>🎹 🎸</dt><dd>The tabs on top of the keys pick the instrument: how riffs sound, and how you enter notes.
-              <b>Guitar</b> (frets 0–5, standard tuning) and <b>bass</b> get a fretboard, the others piano keys. All have
-              the same notes, E3 to A5 (guitar and bass music is written an octave above how it sounds).</dd>
+              <b>Guitar</b> and <b>bass</b> (frets 0–4, standard tuning) get a fretboard, the others piano keys (C4–G5).
+              Each reaches different notes, so when you switch, your riff moves to fit: by an octave if that works,
+              otherwise into a nearby key. From the lowest note to the highest is at most an octave and a fifth.</dd>
             <dt>🎙</dt><dd><b>Play it in:</b> sing, whistle or play into the phone, one note at a time, and it writes the notes down.</dd>
           </dl>
         </HelpSheet>
@@ -54,6 +55,7 @@ import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { api, type Evaluation, type Note, type Rules } from '../ts/api'
 import { noteName } from '../ts/music'
 import { play, type Playback } from '../ts/synth'
+import { fitShift, rangeFor, rangeOf } from '../ts/instrument'
 import StaffEditor from './StaffEditor.vue'
 import MicRecorder from './MicRecorder.vue'
 import HelpSheet from './HelpSheet.vue'
@@ -72,6 +74,14 @@ const playing = ref(-1)
 const playback = shallowRef<Playback | null>(null)
 const evaluation = ref<Evaluation | null>(null)
 const sending = ref(false)
+
+/** the keys and staff: the instrument's notes (widened only for a draft too wide for it) */
+const keys = computed(() => rangeFor(rangeOf(props.instrument), notes.value.map((n) => n.m)))
+// switching instrument (or a draft written on another one): move the riff to fit the new instrument's notes
+watch(() => props.instrument, (id) => {
+  const s = fitShift(notes.value.map((n) => n.m), rangeOf(id))
+  if (s) notes.value = notes.value.map((n) => ({ ...n, m: n.m === null ? null : n.m + s }))
+}, { immediate: true })
 
 const sounding = computed(() => notes.value.filter((n) => n.m !== null).length)
 const rests = computed(() => notes.value.length - sounding.value)
@@ -142,7 +152,8 @@ function toRest() { notes.value = notes.value.map((x, i) => (i === selected.valu
 /** A rest becomes a note at the pitch of the note before it (or B4), ready to be moved. */
 function toNote() {
   const before = notes.value.slice(0, selected.value).reverse().find((x) => x.m !== null)
-  const m = before?.m ?? 71
+  const r = rangeOf(props.instrument)
+  const m = before?.m ?? Math.round((r.lowest + r.highest) / 2)
   notes.value = notes.value.map((x, i) => (i === selected.value ? { m, b: x.b } : x))
 }
 /** Clear the whole riff, with a few seconds to undo it (instead of an "are you sure?" box). */

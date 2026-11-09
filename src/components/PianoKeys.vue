@@ -1,6 +1,6 @@
 <template>
-  <!-- The whole piano the game uses (E3 to A5, the same notes as the guitar's frets 0–5), across the full width: black keys for sharps, a letter on every white
-       key, the octave number on the C keys. -->
+  <!-- The piano keys (C4 to G5: 12 white keys, big enough to tap on a phone; ts/instrument.ts), across the full width:
+       black keys for sharps, a letter on every white key, the octave number on the C keys. -->
   <div class="piano" role="group" aria-label="Piano keys">
     <button v-for="k in whites" :key="'w' + k.midi" type="button"
       :class="['pk_white', { pk_on: k.midi === current, pk_c: k.letter === 'C' }]" :aria-label="noteName(k.midi)" @click="press(k.midi)">
@@ -23,7 +23,7 @@ const props = withDefaults(defineProps<{
   /** the selected slot's note, lit on the keys */
   current?: number | null
   instrument?: string
-}>(), { lowest: 52, highest: 81, current: null, instrument: 'piano' })
+}>(), { lowest: 60, highest: 79, current: null, instrument: 'piano' })
 const emit = defineEmits<{ press: [midi: number] }>()
 
 const LETTER: Record<number, string> = { 0: 'C', 2: 'D', 4: 'E', 5: 'F', 7: 'G', 9: 'A', 11: 'B' }
@@ -53,7 +53,7 @@ function press(m: number) {
 
 <style scoped>
 /* black keys are a bit over half a white key wide */
-.piano { --bw: calc(100% / v-bind('whites.length') * 0.62); position: relative; display: flex; height: 120px; user-select: none; -webkit-user-select: none; }
+.piano { --bw: calc(100% / v-bind('whites.length') * 0.62); position: relative; display: flex; height: 130px; user-select: none; -webkit-user-select: none; }
 .pk_white {
   flex: 1 1 0; min-width: 0; position: relative; margin: 0 0.5px; padding: 0 0 6px; border: 1px solid #b9b2a0; border-radius: 0 0 5px 5px;
   background: linear-gradient(#fffdf6, #efe9da); color: #5a5274; display: flex; align-items: flex-end; justify-content: center; cursor: pointer;
