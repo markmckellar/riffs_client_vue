@@ -4,6 +4,7 @@
     <div class="row">
       <button type="button" class="btn btn_primary" :disabled="!sounding" @click="togglePlay">{{ playback ? '■ Stop' : '▶ Play' }}</button>
       <InstrumentPicker bare />
+      <InputPicker />
       <span :class="['count', { count_ok: countOk }]" :title="`a riff has ${rules.minNotes} to ${rules.maxNotes} notes`">{{ sounding }}/{{ rules.maxNotes }} notes</span>
     </div>
 
@@ -11,8 +12,8 @@
       :max-notes="rules.maxNotes" :max-rests="rules.maxRests" :lowest="rules.lowest" :highest="rules.highest"
       :new-length="1" plain-rhythm :instrument="instrument" @add="addAt" />
 
-    <!-- the same piano as when guessing: a key puts the note at the cursor and moves on, like typing -->
-    <PianoKeys :lowest="rules.lowest" :highest="rules.highest" :current="selNote ? selNote.m : null" :instrument="instrument" @press="onPiano" />
+    <!-- the same keys as when guessing (piano or a fretboard): a key puts the note at the cursor and moves on, like typing -->
+    <NoteKeys :lowest="rules.lowest" :highest="rules.highest" :current="selNote ? selNote.m : null" :instrument="instrument" @press="onPiano" />
 
     <div class="toolbar">
       <div class="tools">
@@ -23,15 +24,18 @@
         <button v-else type="button" class="tool" :disabled="!notes.length" @click="clear">Clear</button>
         <MicRecorder :bpm="bpm" :lowest="rules.lowest" :highest="rules.highest" :max-notes="rules.maxNotes" @notes="fromMic" />
         <HelpSheet title="How to write a riff" storage-key="riffs_help_compose">
-          <p><b>To add:</b> tap a <b>piano key</b> (or the staff at <b>+</b>). The note goes in at the cursor, which then
+          <p><b>To add:</b> tap a <b>piano key</b> or a spot on the <b>fretboard</b> (or the staff at <b>+</b>). The note goes in at the cursor, which then
             moves on, like typing. Every note is the same length.</p>
-          <p><b>To change a note:</b> tap it on the staff (its name turns orange), then a piano key. <b>⌫</b> deletes
+          <p><b>To change a note:</b> tap it on the staff (its name turns orange), then a key. <b>⌫</b> deletes
             it (with nothing selected, the last note); <b>␣ rest</b> turns it into a rest, or a rest back into a note
             (with nothing selected, it adds a rest).</p>
           <h3>Other buttons</h3>
           <dl>
             <dt>🗑 Clear</dt><dd>Start over. You get a few seconds to undo it.</dd>
-            <dt>▶</dt><dd>Hear your riff. <b>Sound</b> picks the instrument.</dd>
+            <dt>▶</dt><dd>Hear your riff. The first drop-down picks the sound.</dd>
+            <dt>🎹 🎸</dt><dd>The second drop-down picks how you enter notes: <b>piano</b>, <b>guitar</b> (frets 0–5,
+              standard tuning) or <b>bass</b>. All three have the same notes, E3 to A5 (guitar and bass music is
+              written an octave above how it sounds).</dd>
             <dt>🎙</dt><dd><b>Play it in:</b> sing, whistle or play into the phone, one note at a time, and it writes the notes down.</dd>
           </dl>
         </HelpSheet>
@@ -56,7 +60,8 @@ import StaffEditor from './StaffEditor.vue'
 import MicRecorder from './MicRecorder.vue'
 import HelpSheet from './HelpSheet.vue'
 import InstrumentPicker from './InstrumentPicker.vue'
-import PianoKeys from './PianoKeys.vue'
+import NoteKeys from './NoteKeys.vue'
+import InputPicker from './InputPicker.vue'
 
 const props = defineProps<{ gameId: string; rules: Rules; instrument: string; opponentName: string }>()
 const emit = defineEmits<{ send: [notes: Note[], tuneId: string | undefined] }>()

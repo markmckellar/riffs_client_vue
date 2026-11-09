@@ -1,5 +1,5 @@
 <template>
-  <!-- The whole piano the game uses (G3 to C6), across the full width: black keys for sharps, a letter on every white
+  <!-- The whole piano the game uses (E3 to A5, the same notes as the guitar's frets 0–5), across the full width: black keys for sharps, a letter on every white
        key, the octave number on the C keys. -->
   <div class="piano" role="group" aria-label="Piano keys">
     <button v-for="k in whites" :key="'w' + k.midi" type="button"
@@ -23,7 +23,7 @@ const props = withDefaults(defineProps<{
   /** the selected slot's note, lit on the keys */
   current?: number | null
   instrument?: string
-}>(), { lowest: 55, highest: 84, current: null, instrument: 'piano' })
+}>(), { lowest: 52, highest: 81, current: null, instrument: 'piano' })
 const emit = defineEmits<{ press: [midi: number] }>()
 
 const LETTER: Record<number, string> = { 0: 'C', 2: 'D', 4: 'E', 5: 'F', 7: 'G', 9: 'A', 11: 'B' }

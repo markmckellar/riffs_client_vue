@@ -131,7 +131,7 @@ const props = withDefaults(defineProps<{
   peek?: (number | null)[] | null
 }>(), {
   mode: 'compose', locked: () => [], marks: null, lengthMarks: null, markHints: null, highlight: -1, maxNotes: 8, maxRests: 2,
-  lowest: 55, highest: 84, newLength: 1, newRest: false, ghost: null, instrument: 'piano', plainRhythm: false, contour: null, possible: null, peek: null,
+  lowest: 52, highest: 81, newLength: 1, newRest: false, ghost: null, instrument: 'piano', plainRhythm: false, contour: null, possible: null, peek: null,
 })
 const emit = defineEmits<{ 'update:modelValue': [Note[]]; add: [pitch: number]; cancel: [] }>()
 const selected = defineModel<number>('selected', { default: -1 })
@@ -139,9 +139,9 @@ const selected = defineModel<number>('selected', { default: -1 })
 const COL = 36
 const LEFT = 48
 const HALF = 9 // half a space: one diatonic step (a bit taller, since the staff is scaled to fit the screen)
-// just room for the game's notes, G3 (step -3) to C6 (step 14), with their ledger lines: no stems any more
-const MAX_STEP = 15 // a step above C6
-const MIN_STEP = -4 // a step below G3
+// just room for the game's notes (E3 to A5: the guitar's frets 0–5, as written) with their ledger lines: no stems any more
+const MAX_STEP = computed(() => stepOf(props.highest).step + 1) // a step above the highest note
+const MIN_STEP = computed(() => stepOf(props.lowest).step - 1) // a step below the lowest
 
 const slots = computed(() => props.modelValue)
 const editable = computed(() => props.mode !== 'view')
@@ -161,7 +161,7 @@ function letterOf(m: number) { return noteName(m).replace(/-?\d+$/, '') }
 function octaveOf(m: number) { return String(Math.floor(m / 12) - 1) }
 // under the staff: the row of feedback dots when guessing, otherwise just a little margin
 const BOTTOM = computed(() => (props.mode === 'guess' ? 30 : 12))
-const height = computed(() => TOP.value + (MAX_STEP - MIN_STEP) * HALF + BOTTOM.value)
+const height = computed(() => TOP.value + (MAX_STEP.value - MIN_STEP.value) * HALF + BOTTOM.value)
 /** the staff positions (steps) the selected note could be at, and whether only as a sharp */
 const possibleSteps = computed(() => {
   if (!props.possible || selected.value < 0) return []
@@ -173,9 +173,9 @@ const ariaLabel = computed(() => slots.value.map((n) => (n.m === null ? 'rest' :
 
 const scroller = ref<HTMLElement | null>(null)
 
-function y(step: number) { return TOP.value + (MAX_STEP - step) * HALF }
+function y(step: number) { return TOP.value + (MAX_STEP.value - step) * HALF }
 function colX(i: number) { return LEFT + COL * i + COL / 2 }
-function stepFromY(py: number) { return Math.round(MAX_STEP - (py - TOP.value) / HALF) }
+function stepFromY(py: number) { return Math.round(MAX_STEP.value - (py - TOP.value) / HALF) }
 function stemUp(m: number) { return stepOf(m).step < 6 }
 /** with plainRhythm (every note the same length) notes are drawn as open heads with no stem, a "full note" */
 function displayBeats(n: Note) { return props.plainRhythm ? 4 : n.b }
