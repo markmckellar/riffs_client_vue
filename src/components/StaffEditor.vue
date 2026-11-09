@@ -3,6 +3,11 @@
     <div ref="scroller" class="staff_scroll">
       <svg :viewBox="`0 0 ${width} ${height}`" class="staff_svg"
         role="img" :aria-label="ariaLabel" @pointerdown="onTap">
+        <!-- the select-only bands above and below the staff: a tap there picks a note without moving it -->
+        <g v-if="editable" class="staff_pick">
+          <rect x="0" y="0" :width="width" :height="pickTop" />
+          <rect x="0" :y="pickBottom" :width="width" :height="height - pickBottom" />
+        </g>
         <!-- the playing note's column -->
         <rect v-if="highlight >= 0 && highlight < slots.length" :x="colX(highlight) - COL / 2" y="0" :width="COL" :height="height" class="staff_playing" />
         <!-- the selected column -->
@@ -156,11 +161,11 @@ const columns = computed(() => Math.max(props.maxNotes, slots.value.length + (ca
 const width = computed(() => LEFT + COL * columns.value + 12)
 // above the staff: a row of note names, and in learner mode a row of shape arrows under it
 const NAME_ROW = 18
-const TOP = computed(() => (props.contour ? 44 : 26))
+const TOP = computed(() => (props.contour ? 48 : 32))
 function letterOf(m: number) { return noteName(m).replace(/-?\d+$/, '') }
 function octaveOf(m: number) { return String(Math.floor(m / 12) - 1) }
 // under the staff: the row of feedback dots when guessing, otherwise just a little margin
-const BOTTOM = computed(() => (props.mode === 'guess' ? 30 : 12))
+const BOTTOM = computed(() => (props.mode === 'guess' ? 34 : props.mode === 'compose' ? 26 : 12))
 const height = computed(() => TOP.value + (MAX_STEP.value - MIN_STEP.value) * HALF + BOTTOM.value)
 /** the staff positions (steps) the selected note could be at, and whether only as a sharp */
 const possibleSteps = computed(() => {
@@ -169,6 +174,12 @@ const possibleSteps = computed(() => {
   for (const p of props.possible) { const s = stepOf(p); m.set(s.step, (m.get(s.step) ?? true) && s.sharp) }
   return [...m.entries()].map(([step, sharpOnly]) => ({ step, sharpOnly }))
 })
+/**
+ * Taps above pickTop (the note names) or below pickBottom only select a note, so you can see where it is on the
+ * instrument (and hear it) without changing it. Between them a tap places the note at that line or space.
+ */
+const pickTop = computed(() => TOP.value - HALF * 0.6)
+const pickBottom = computed(() => y(MIN_STEP.value) + HALF * 0.6)
 const ariaLabel = computed(() => slots.value.map((n) => (n.m === null ? 'rest' : noteName(n.m))).join(', ') || 'empty staff')
 
 const scroller = ref<HTMLElement | null>(null)
@@ -212,6 +223,15 @@ function onTap(e: PointerEvent) {
   const py = (e.clientY - r.top) * (height.value / r.height)
   const col = Math.floor((px - LEFT) / COL)
   if (col < 0) return
+  if (py < pickTop.value || py > pickBottom.value) {
+    // select only: nothing moves
+    if (col < slots.value.length) {
+      selected.value = col
+      const m = slots.value[col].m ?? (props.mode === 'guess' ? props.locked[col] : null)
+      if (m != null) blip(m, props.instrument)
+    } else if (props.mode === 'compose' && col > slots.value.length) { selected.value = -1; emit('cancel') }
+    return
+  }
   const pitch = clamp(midiOfStep(stepFromY(py)))
   const notes = slots.value.map((n) => ({ ...n }))
   if (col < notes.length) {
@@ -224,7 +244,16 @@ function onTap(e: PointerEvent) {
       return
     }
     notes[col] = { m: pitch, b: notes[col].b }
-    selected.value = col
+    // then on to the next note, like typing (and like the keys): guessing skips known notes and wraps after the last;
+    // composing goes past the last note to the end, where the keys add notes
+    if (props.mode === 'guess') {
+      // the next note that can still change, rounding back to the first after the last (as the keys do)
+      const order = [...notes.keys()].map((k) => (col + 1 + k) % notes.length)
+      const next = order.find((i) => props.locked[i] == null)
+      selected.value = next ?? col
+    } else {
+      selected.value = col + 1 < notes.length ? col + 1 : -1
+    }
   } else if (canAppend.value && col === notes.length) {
     // adding: the composer asks which length (a ghost note shows where); nothing is selected meanwhile
     selected.value = -1
@@ -263,6 +292,7 @@ function onTap(e: PointerEvent) {
 .staff_note_locked .staff_head_open { stroke: var(--good); }
 .staff_note_locked .staff_stem, .staff_note_locked .staff_flag { stroke: var(--good); }
 .staff_empty_q { fill: var(--ink-soft); opacity: 0.55; font-size: 26px; font-weight: 800; text-anchor: middle; }
+.staff_pick rect { fill: var(--ink); opacity: 0.045; }
 .staff_playing { fill: var(--accent); opacity: 0.25; }
 .staff_selected { fill: var(--accent-2); opacity: 0.14; }
 .staff_add rect { fill: none; stroke: var(--ink-soft); stroke-dasharray: 4 4; opacity: 0.6; }

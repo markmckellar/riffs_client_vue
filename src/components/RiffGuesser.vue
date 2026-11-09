@@ -14,10 +14,10 @@
         <h3>Buttons</h3>
         <dl>
           <dt>▶</dt><dd><b>Guess the riff</b> plays the riff, as often as you like.</dd>
-          <dt>🎹 🎸</dt><dd><b>The keys:</b> the tabs on top pick the instrument, which sets both the sound and the keys (guitar and bass get a fretboard).
+          <dt>🎹 🎸</dt><dd><b>The keys:</b> the tabs on top pick the instrument, which sets both the sound and the keys (guitar, bass, mandolin and banjo get a fretboard, violin and cello a fingerboard).
             Each instrument reaches different notes, so the riff is moved to fit it (an octave, or into a nearby key): you hear and write it there. Tap a key or a fret to hear it and put that note in the selected slot; it then moves on to
-            the next note, like typing. <b>⌫</b> empties a note (or the one before). To change a note, tap it on the staff
-            first. On the piano the C keys are marked C4 and C5; on a fretboard the selected note lights up everywhere it can be played.</dd>
+            the next note, like typing. Tapping a line or space on the staff does the same. <b>⌫</b> empties a note (or the one before).
+            To pick a note without changing it (to see where it is on the keys), tap its name above the staff, or the strip under it. On the piano the C keys are marked C4 and C5; on a fretboard the selected note lights up everywhere it can be played.</dd>
           <dt>?</dt><dd>An empty slot. Tap it to select it.</dd>
 
           <dt>▶ My</dt><dd>Play your guess, to compare by ear. Every note is the same length.</dd>
@@ -148,6 +148,8 @@ watch(() => `${props.round.number}|${props.round.guesses.length}|${props.round.r
     m: r ?? lastGuess.value?.notes[i] ?? null,
     b: 1,
   }))
+  // the cursor on the first note that can still change, so the keys work straight away
+  selected.value = props.round.revealed.findIndex((r) => r == null)
 }, { immediate: true })
 
 // ---- learner mode helpers (the phone already has the riff's notes, to play them)
@@ -198,18 +200,32 @@ const learnTip = computed(() => {
 })
 
 // ---- the piano
-/** the slot a piano key goes into: the selected one if it can change, else the first empty one */
+/** the first note that can still change after slot {@code from}, wrapping round to the start; -1 if none */
+function nextChangeable(from: number): number {
+  const n = slots.value.length
+  for (let k = 1; k <= n; k++) {
+    const i = (((from + k) % n) + n) % n
+    if (props.round.revealed[i] == null) return i
+  }
+  return -1
+}
+/**
+ * The slot a piano key goes into: the selected one if it can change; else (nothing selected, or a known note) the
+ * first empty one, or failing that the next one that can change. Every slot is filled after a guess (with that
+ * guess, to edit), so "first empty" alone would leave the keys doing nothing.
+ */
 function targetSlot(): number {
   const s = selected.value
   if (s >= 0 && props.round.revealed[s] == null) return s
-  return slots.value.findIndex((n, i) => n.m === null && props.round.revealed[i] == null)
+  const empty = slots.value.findIndex((n, i) => n.m === null && props.round.revealed[i] == null)
+  return empty >= 0 ? empty : nextChangeable(s)
 }
 function onPiano(m: number) {
   const t = targetSlot()
-  if (t < 0) return    // every note is filled in: select one to change it
+  if (t < 0) return    // every note is known
   slots.value = slots.value.map((n, i) => (i === t ? { m, b: 1 } : n))
-  // on to the next note that can still change, like typing; on the last one, stay put
-  const next = slots.value.findIndex((_, i) => i > t && props.round.revealed[i] == null)
+  // on to the next note that can still change, like typing; after the last, round to the first
+  const next = nextChangeable(t)
   selected.value = next >= 0 ? next : t
 }
 

@@ -6,7 +6,7 @@
 // else by the fewest half steps (the same riff in another key; the first note is always given, so the guess works the
 // same). The server keeps the riff as written; guesses are moved back before they're sent.
 import { computed, ref, watch } from 'vue'
-import { INSTRUMENTS, type Instrument } from './synth'
+import { INSTRUMENTS, prepareInstrument, type Instrument } from './synth'
 
 function stored(): string {
   try {
@@ -19,6 +19,7 @@ export const instrument = ref(stored())
 watch(instrument, (id) => {
   try { localStorage.setItem('riffs_instrument', id) } catch { /* storage blocked: not remembered */ }
 })
+watch(instrument, prepareInstrument, { immediate: true })    // fetch its recordings before the first riff plays
 
 export interface Range { lowest: number; highest: number }
 
@@ -29,11 +30,12 @@ export function instrumentOf(id: string): Instrument {
   return INSTRUMENTS.find((i) => i.id === id) ?? INSTRUMENTS[0]
 }
 
-/** The notes an instrument can play: open strings to the top fret, or the piano keys. */
+/** The notes an instrument can play: open strings to the top fret (and a drone string, open), or the piano keys. */
 export function rangeOf(id: string): Range {
   const i = instrumentOf(id)
   if (!i.strings) return PIANO
-  return { lowest: i.strings[0], highest: i.strings[i.strings.length - 1] + (i.frets ?? 4) }
+  const top = i.strings[i.strings.length - 1] + (i.frets ?? 4)
+  return { lowest: i.strings[0], highest: Math.max(top, i.drone ?? top) }
 }
 
 /** The picked instrument's range. */

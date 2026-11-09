@@ -25,7 +25,9 @@
     <template v-else-if="rules">
       <GameView v-if="route.gameId" :game-id="route.gameId" :rules="rules" :refresh="refresh"
         :developer="!!me.attributes?.includes('developer')" @back="go('')" @rematch="rematch" />
-      <HomeView v-else :refresh="refresh" :me="me" @open="(id) => go('game/' + id)" />
+      <GamesView v-else-if="route.page === 'games'" :refresh="refresh" @open="(id) => go('game/' + id)" @back="go('')" />
+      <OpponentsView v-else-if="route.page === 'opponents'" :refresh="refresh" @open="(id) => go('game/' + id)" @back="go('')" />
+      <HomeView v-else :refresh="refresh" :me="me" @open="(id) => go('game/' + id)" @games="go('games')" @opponents="go('opponents')" />
     </template>
   </main>
 
@@ -40,6 +42,8 @@ import { api, ApiError, type AuthConfig, type GameEvent, type Me, type Rules } f
 import SignIn from './components/SignIn.vue'
 import HomeView from './components/HomeView.vue'
 import GameView from './components/GameView.vue'
+import GamesView from './components/GamesView.vue'
+import OpponentsView from './components/OpponentsView.vue'
 
 const config = ref<AuthConfig | null>(null)
 // the name comes from the server (riffs.game-name); .env's VITE_GAME_NAME until it answers
@@ -51,9 +55,14 @@ const loadError = ref('')
 const refresh = ref(0)
 const toasts = ref<GameEvent[]>([])
 
-// #/game/<id> or the lobby; the phone's back button works
-const route = reactive<{ gameId: string | null }>({ gameId: null })
-function readHash() { const m = /^#\/game\/([\w-]+)/.exec(location.hash); route.gameId = m ? m[1] : null }
+// #/game/<id>, #/games (all your games) or home; the phone's back button works
+const route = reactive<{ gameId: string | null; page: string }>({ gameId: null, page: '' })
+function readHash() {
+  const m = /^#\/game\/([\w-]+)/.exec(location.hash)
+  route.gameId = m ? m[1] : null
+  const page = /^#\/(games|opponents)$/.exec(location.hash)
+  route.page = page ? page[1] : ''
+}
 function go(path: string) { location.hash = '#/' + path }
 window.addEventListener('hashchange', readHash)
 readHash()

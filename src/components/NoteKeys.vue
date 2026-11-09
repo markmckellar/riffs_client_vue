@@ -1,6 +1,6 @@
 <template>
   <!-- The note keyboard, with the instrument tabs on its top edge. One choice sets both how riffs sound and how notes
-       are entered: guitar and bass get a fretboard, the rest piano keys. The tabs scroll sideways when they don't fit
+       are entered: string instruments (guitar, bass, mandolin, banjo, violin, cello) get a fretboard, the rest piano keys. The tabs scroll sideways when they don't fit
        (like filter chips in phone apps); the picked one is remembered (ts/instrument.ts). -->
   <div class="note_keys">
     <div ref="strip" class="nk_tabs" role="tablist" aria-label="Instrument">
@@ -12,7 +12,7 @@
     <div class="nk_board" role="tabpanel">
       <PianoKeys v-if="!picked.strings" :lowest="lowest" :highest="highest" :current="current" :instrument="picked.id"
         @press="(m) => emit('press', m)" />
-      <Fretboard v-else :key="picked.id" :strings="picked.strings" :frets="frets" :name="picked.name"
+      <Fretboard v-else :key="picked.id" :strings="picked.strings" :frets="frets" :name="picked.name" :fretless="picked.fretless" :drone="picked.drone"
         :lowest="lowest" :highest="highest" :current="current" :instrument="picked.id" @press="(m) => emit('press', m)" />
     </div>
   </div>

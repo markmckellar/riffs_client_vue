@@ -15,19 +15,17 @@
     <button type="button" class="btn btn_primary btn_big" :disabled="busy" @click="start()">🎸 New game</button>
     <p class="muted small">Finds you an opponent: someone online if they say yes, otherwise a bot.</p>
 
-    <section class="card">
-      <h2>Your games</h2>
-      <p v-if="!mine.length" class="muted">No games yet. Start one!</p>
+    <!-- only the games waiting on you; the rest are on their own page (#/games) -->
+    <section v-if="yourTurn.length" class="card">
+      <h2>Your turn</h2>
       <ul class="list">
-        <li v-for="g in mine" :key="g.id">
-          <button type="button" :class="['game_row', { game_row_mine: myTurn(g) }]" @click="emit('open', g.id)">
-            <span class="game_row_name"><span v-if="g.opponent.bot">🤖 </span>{{ g.opponent.name }}</span>
-            <span class="game_row_status">{{ statusText(g) }}</span>
-            <span class="game_row_lives">🎸 {{ g.me.strings }} vs 🎸 {{ g.opponent.strings }}</span>
-          </button>
-        </li>
+        <GameRow v-for="g in yourTurn.slice(0, TURNS_SHOWN)" :key="g.id" :g="g" @open="(id) => emit('open', id)" />
       </ul>
     </section>
+    <button v-if="mine.length" type="button" class="btn games_link" @click="emit('games')">
+      <span>📋 Your games <span class="muted">({{ mine.length }})</span></span>
+      <span class="muted small">{{ gamesSummary }} ›</span>
+    </button>
 
     <section class="card">
       <h2>Online now</h2>
@@ -37,14 +35,11 @@
       </ul>
     </section>
 
-    <section v-if="home.past.length" class="card">
-      <h2>Past opponents</h2>
-      <ul class="list">
-        <PlayerRow v-for="p in pastShown" :key="p.id" :p="p" :busy="busy" @open="(id) => emit('open', id)" @challenge="start" />
-      </ul>
-      <button v-if="home.past.length > PAST_SHOWN" type="button" class="btn btn_ghost btn_small more" @click="allPast = !allPast">
-        {{ allPast ? 'Show fewer' : `Show all ${home.past.length}` }}</button>
-    </section>
+    <!-- everyone you've played is on its own page (#/opponents) -->
+    <button v-if="home.past.length" type="button" class="btn games_link" @click="emit('opponents')">
+      <span>👥 Past opponents <span class="muted">({{ home.past.length }})</span></span>
+      <span class="muted small">{{ pastOnline ? `${pastOnline} online · ` : '' }}rematch ›</span>
+    </button>
 
     <section class="card">
       <h2>Find a player</h2>
@@ -62,19 +57,25 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { api, type GameView, type Home, type Me, type PlayerEntry } from '../ts/api'
 import PlayerRow from './PlayerRow.vue'
+import GameRow, { myTurn, waiting } from './GameRow.vue'
 
 const props = defineProps<{ refresh: number; me?: Me | null }>()
-const emit = defineEmits<{ open: [id: string] }>()
+const emit = defineEmits<{ open: [id: string]; games: []; opponents: [] }>()
+const TURNS_SHOWN = 3
 const games = ref<GameView[]>([])
 const home = ref<Home>({ online: [], past: [] })
 const busy = ref(false)
 const error = ref('')
-const PAST_SHOWN = 8
-const allPast = ref(false)
 
 const challenges = computed(() => games.value.filter((g) => g.turn === 'invited'))
 const mine = computed(() => games.value.filter((g) => g.turn !== 'invited'))
-const pastShown = computed(() => (allPast.value ? home.value.past : home.value.past.slice(0, PAST_SHOWN)))
+const yourTurn = computed(() => mine.value.filter(myTurn))
+const gamesSummary = computed(() => {
+  const more = yourTurn.value.length - TURNS_SHOWN
+  const theirs = mine.value.filter((g) => !myTurn(g) && waiting(g)).length
+  return [more > 0 ? `${more} more your turn` : '', theirs ? `${theirs} their turn` : ''].filter(Boolean).join(' · ') || 'all finished'
+})
+const pastOnline = computed(() => home.value.past.filter((p) => p.online && !p.bot).length)
 
 async function load() {
   try { [games.value, home.value] = await Promise.all([api.games(), api.home()]); error.value = '' } catch (e) { error.value = (e as Error).message }
@@ -111,18 +112,6 @@ async function answer(id: string, yes: boolean) {
   } catch (e) { error.value = (e as Error).message; await load() } finally { busy.value = false }
 }
 
-function myTurn(g: GameView) { return g.turn === 'compose' || g.turn === 'guess' }
-function statusText(g: GameView) {
-  if (g.status === 'invited') return g.turn === 'compose' ? `Waiting for a yes · write your riff` : `Waiting for ${g.opponent.name} to say yes`
-  switch (g.turn) {
-    case 'compose': return 'Your turn: write a riff'
-    case 'guess': return 'Your turn: guess their riff'
-    case 'wait_compose': return 'They are writing a riff'
-    case 'wait_guess': return 'They are guessing'
-    case 'declined': return 'Said no thanks'
-    default: return g.winner === g.me.id ? 'You won 🏆' : 'They won'
-  }
-}
 </script>
 
 <style scoped>
@@ -132,16 +121,10 @@ h2 { margin: 0 0 8px; font-size: 1.1rem; }
 .challenges { border: 1px solid var(--accent); }
 .challenge_row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .challenge_who { flex: 1; min-width: 140px; }
-.game_row { width: 100%; display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; text-align: left; background: var(--surface-2); border: 1px solid transparent; border-radius: var(--radius-sm); color: var(--text); padding: 10px 12px; cursor: pointer; font: inherit; }
-.game_row_mine { border-color: var(--accent); }
-.game_row_name { font-weight: 700; }
-.game_row_status { grid-column: 1; color: var(--text-muted); font-size: 0.85rem; }
-.game_row_mine .game_row_status { color: var(--accent); }
-.game_row_lives { grid-row: 1 / span 2; grid-column: 2; align-self: center; font-size: 0.75rem; color: var(--text-muted); }
+.games_link { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; width: 100%; text-align: left; }
 .search { width: 100%; box-sizing: border-box; font: inherit; color: var(--text); background: var(--surface-2); border: 1px solid var(--border);
   border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 8px; }
 .search:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 1px; }
-.more { margin-top: 6px; }
 .muted { color: var(--text-muted); }
 .small { font-size: 0.8rem; margin: 0; }
 .error { color: var(--bad); }

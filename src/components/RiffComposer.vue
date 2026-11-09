@@ -24,7 +24,9 @@
         <HelpSheet title="How to write a riff" storage-key="riffs_help_compose">
           <p><b>To add:</b> tap a <b>piano key</b> or a spot on the <b>fretboard</b> (or the staff at <b>+</b>). The note goes in at the cursor, which then
             moves on, like typing. Every note is the same length.</p>
-          <p><b>To change a note:</b> tap it on the staff (its name turns orange), then a key. <b>⌫</b> deletes
+          <p><b>To change a note:</b> tap it on the staff (its name turns orange), then a key or a spot on the staff; the cursor
+            then moves on to the next note. Tapping a note's name above the staff (or the strip under it) just picks it, without
+            changing it. <b>⌫</b> deletes
             it (with nothing selected, the last note); <b>␣ rest</b> turns it into a rest, or a rest back into a note
             (with nothing selected, it adds a rest).</p>
           <h3>Other buttons</h3>
