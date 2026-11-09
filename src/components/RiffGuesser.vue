@@ -4,7 +4,6 @@
     <div class="row">
       <button type="button" class="btn btn_primary" @click="togglePlay">{{ playback ? '■ Stop' : '▶ Guess the riff' }}</button>
       <InstrumentPicker bare />
-      <InputPicker />
       <label class="learner_switch" title="Learner mode: shape arrows, where a note could be, a free note every 2 misses (half points)">
         <input type="checkbox" :checked="me.learner" :disabled="busy" @change="emit('learner', !me.learner)" />
         🎓 Learner
@@ -16,7 +15,7 @@
         <h3>Buttons</h3>
         <dl>
           <dt>▶</dt><dd><b>Guess the riff</b> plays the riff, as often as you like. The drop-down next to it picks the sound.</dd>
-          <dt>🎹 🎸</dt><dd><b>The keys:</b> piano, guitar or bass (the drop-down next to the sound picks one). Tap a key or a fret to hear it and put that note in the selected slot; it then moves on to
+          <dt>🎹 🎸</dt><dd><b>The keys:</b> piano, guitar or bass (pick one with the tabs on top of the keys). Tap a key or a fret to hear it and put that note in the selected slot; it then moves on to
             the next note, like typing. <b>⌫</b> empties a note (or the one before). To change a note, tap it on the staff
             first. On the piano the C keys are marked C4 and C5; on a fretboard the selected note lights up everywhere it can be played.</dd>
           <dt>?</dt><dd>An empty slot. Tap it to select it.</dd>
@@ -112,7 +111,6 @@ import StaffEditor from './StaffEditor.vue'
 import GuessHistory from './GuessHistory.vue'
 import HelpSheet from './HelpSheet.vue'
 import NoteKeys from './NoteKeys.vue'
-import InputPicker from './InputPicker.vue'
 import InstrumentPicker from './InstrumentPicker.vue'
 
 const props = defineProps<{ round: Round; rules: Rules; instrument: string; me: Player; busy: boolean; /** testing: show the answer faintly */ developer?: boolean }>()

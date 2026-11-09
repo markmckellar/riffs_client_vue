@@ -4,7 +4,6 @@
     <div class="row">
       <button type="button" class="btn btn_primary" :disabled="!sounding" @click="togglePlay">{{ playback ? '■ Stop' : '▶ Play' }}</button>
       <InstrumentPicker bare />
-      <InputPicker />
       <span :class="['count', { count_ok: countOk }]" :title="`a riff has ${rules.minNotes} to ${rules.maxNotes} notes`">{{ sounding }}/{{ rules.maxNotes }} notes</span>
     </div>
 
@@ -32,8 +31,8 @@
           <h3>Other buttons</h3>
           <dl>
             <dt>🗑 Clear</dt><dd>Start over. You get a few seconds to undo it.</dd>
-            <dt>▶</dt><dd>Hear your riff. The first drop-down picks the sound.</dd>
-            <dt>🎹 🎸</dt><dd>The second drop-down picks how you enter notes: <b>piano</b>, <b>guitar</b> (frets 0–5,
+            <dt>▶</dt><dd>Hear your riff. The drop-down next to it picks the sound.</dd>
+            <dt>🎹 🎸</dt><dd>The tabs on top of the keys pick how you enter notes: <b>piano</b>, <b>guitar</b> (frets 0–5,
               standard tuning) or <b>bass</b>. All three have the same notes, E3 to A5 (guitar and bass music is
               written an octave above how it sounds).</dd>
             <dt>🎙</dt><dd><b>Play it in:</b> sing, whistle or play into the phone, one note at a time, and it writes the notes down.</dd>
@@ -61,7 +60,6 @@ import MicRecorder from './MicRecorder.vue'
 import HelpSheet from './HelpSheet.vue'
 import InstrumentPicker from './InstrumentPicker.vue'
 import NoteKeys from './NoteKeys.vue'
-import InputPicker from './InputPicker.vue'
 
 const props = defineProps<{ gameId: string; rules: Rules; instrument: string; opponentName: string }>()
 const emit = defineEmits<{ send: [notes: Note[], tuneId: string | undefined] }>()
