@@ -11,7 +11,7 @@
       :new-length="1" plain-rhythm :instrument="instrument" @add="addAt" />
 
     <!-- the same keys as when guessing (piano or a fretboard): a key puts the note at the cursor and moves on, like typing -->
-    <NoteKeys :lowest="rules.lowest" :highest="rules.highest" :current="selNote ? selNote.m : null" @press="onPiano" />
+    <NoteKeys :lowest="rules.lowest" :highest="rules.highest" :current="keyNote" @press="onPiano" />
 
     <div class="toolbar">
       <div class="tools">
@@ -77,6 +77,11 @@ const sounding = computed(() => notes.value.filter((n) => n.m !== null).length)
 const rests = computed(() => notes.value.length - sounding.value)
 const countOk = computed(() => sounding.value >= props.rules.minNotes && sounding.value <= props.rules.maxNotes)
 const selNote = computed(() => { const n = notes.value[selected.value]; return n && n.m !== null ? n : null })
+/** the note lit on the keys: while playing, the note sounding now (nothing on a rest); otherwise the selected one */
+const keyNote = computed(() => {
+  if (playback.value) return playing.value >= 0 ? (notes.value[playing.value]?.m ?? null) : null
+  return selNote.value ? selNote.value.m : null
+})
 const problem = computed(() => {
   if (sounding.value < props.rules.minNotes) return `Add ${props.rules.minNotes - sounding.value} more note${props.rules.minNotes - sounding.value === 1 ? '' : 's'}.`
   return evaluation.value?.problem ?? null
